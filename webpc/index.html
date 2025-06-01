@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulated Desktop</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden; /* Prevent body scroll */
+            /* Updated background with the provided base64 image */
+            background: url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3/9QBogAUAAACAAEDAwQGBwUBAQEAAAECAwQGBwUABwgREhMhMUFRYXEiMoGRoRRCscHRUvAIFhUjM1JTc4KS0+FiB0Z0g+L/xAAZAQEBAQEBAQAAAAAAAAAAAAAAAQIDBAX/xAAuEQACAQIFAgUEAgMBAQAAAAAAAQIRAxIhQVFhExQiMnGBkaGxwdHh8FLxQv/EABoRAQEBAQEBAQAAAAAAAAAAAAABAgMEBQb/xAAfEQEBAQADAQEBAQEBAAAAAAAAARECIQMSE0FRYSL/2gAMAwEAAhEDEQAALXJzt3zhmlomAaO1a6WhY6jLGtBudiulZdwHK50bGt0XExmctDY62DYaxuVgsdLBtgaSudgWOtg2BUrjcQsdrAsGNZXGwLHaudgaSuVgWOtjnlA1lc7BsdLBoaRzGlWWDFwKm2CFRlZpqoVBole9mgb3tKN0ly7E3SIh0i0zRno6RaYDlGxlhjQYIrGaMxsHU8jrNBUrncZfkFxrrRsUqVxsoWPRQuMp40nThYFj0Xj+crncb4ynjSdOGWLnY75QMsRjWVwsc8o9FxcssSxpzXCwbHXKBYGayuVg11sGw8ayuVg2OlGkqBplKjSxYsKsI33iSQ5ZJIBJIBlZokAOmGOjPQq0dGwKlCsLTLDUNgmNOHKFZqHRqjDTLDZVLlc7hvwDLil6V2SlzqvLlx5Twcrh3PdpXCXwP0ud1+blxuWWD9PLglcsvZ75HkrXnyx+ncQuL2ZcHZ67cs+PR/g357leXLFzsejOOOUR1y25rnYNKjWbWDWNYmqfet7LUhyjOyuykNDLNJq0WjRTdM0Z6kkDG9WFejDA0TGhco0TomobGNrFqg2DYVGg4ujZhnemGX/J+z34/H9Ufp3Ir3Yvl+ZPZua/kv7nj7LyXKY5XGb+b37C342P03+E/s6Vjhj7HPzcn2jrj7JxTrbl613lhzXmi99C4HF7NwTPH4ON751j5blnl0fYccnbx9Y+O5b31t/lt/KtPD9eXkcMnfkve4ZN+3v4c8gp5BWLaCxtYirffpJnrk0m6aDFNsZoBMrWAM0wxsHnrGNRmDKVg2Gco0adChco1hWBYrVwaNKwbKKh8P4uH1R+ler8vjx+Jj33rHvvFZfxOT7o6+tOXShb8XD6b/Ae6v6nJ94N4r73Ge95Ol8fQmj0TJszrz3iv6vJ95/Tfd39Xk+8/osGPXxZ3t4+sfI8uXfX0vHx5dvH4vJ185/T5blve28P82tfFz7c8645HlXOqtezmBRpUKhpBrG1iVv6DGqJm5JJIBJrAEzTWgBpaJmgejYywxpnKDLC0w1BRsdNDr5GqVz0yx10NxORUcrBsdrj84N7M61SpR4cd8uE/wAo/Rs73gw5MMM8cru6u9PR/ncN/JnPVHf1pzXbQWfGw+m/wM9t4r0snqPv5nzY3HOd0vS+iPbWPR2PFdmec+7lc7fGs7XoPalsejCYzKd86vjeW99fWY29vH1j5Hk61p4/VbeGZXLKhSyCq17OfgUaVGp1pBrG0Qp/Q0ms3JJJAk2Rm27ILTFtboNibsdmaTKNo05G2jUNNSuWh7VVZTVGXKhbW0aFwbRtrbRp6uDRK0LlIbSMyG2QcuRyy5L4BpOa7du49MrP3X+bnj3e8vd5vHnlfNzytP02nD9DH/wBfk47L2MM/WPyc6Vc6XpvzzINc6dChvBoUqNC4LNtvQSW/obRbGbkmpIEkkAkkAhrWA4yjSGhUQ1tE1Mo0sgoVBo2ttc7TaSMyoXJtDLobSQcsq55WlQtDWBk55FlQyDXkMnOnXPINoNc6dCm05ChToUNoNGlRoXBolRJT+hJJDk2tFoLGpjKBhMZtAK1M2zYNVjdhkDio2to0Lg0d9zaNC4NClRprg1zyOueR60g5OeR0KGsc6F6FQy6G15c8gp1zoa8jlQpZBQ25CjkVChpBolRoXBrG0SXH9CSSXJNSQCSQCYkAKSBoakDg0akFwaFSC4FGpBcCudajaRzoViNpAyc8uiQaxzy6BUg2jnRqQa8udGpBpBo1ILhRJT+hJJDk2tFoLGpjKBhMZtAK1M2zYNVjdhkDio2to0Lg0d9zaNC4NClRprg1zyOueR60g5OeR0KGsc6F6FQy6G15c8gp1zoa8jlQpZBQ25CjkVChpBolRoXBrG0SXH//2Q==') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #desktop {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden; /* Keep windows within desktop */
+            /* Added styles for centering and initial size */
+            width: 100vw; /* Default to full width */
+            height: calc(100vh - 40px); /* Default to full height minus taskbar */
+            margin: auto; /* Center the desktop area */
+            background-color: rgba(0, 0, 0, 0.1); /* Optional: subtle background for desktop area */
+        }
+
+        #taskbar {
+            height: 40px;
+            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent dark */
+            backdrop-filter: blur(10px); /* Frosted glass effect */
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000; /* Ensure taskbar is on top */
+        }
+
+        #start-button {
+            display: flex;
+            align-items: center;
+            padding: 5px 10px;
+            margin-right: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #start-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        #start-button i {
+            margin-right: 5px;
+        }
+
+        #start-menu {
+            position: absolute;
+            bottom: 40px; /* Position above taskbar */
+            left: 0;
+            width: 250px; /* Width of the start menu */
+            background-color: rgba(40, 40, 40, 0.9); /* Dark semi-transparent background */
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 10px;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+            border-top-right-radius: 8px;
+            display: none; /* Initially hidden */
+            flex-direction: column;
+            z-index: 999; /* Below taskbar, above windows */
+        }
+
+        .start-menu-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+        .start-menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .start-menu-item i {
+            margin-right: 10px;
+            width: 20px; /* Fixed width for icons */
+            text-align: center;
+        }
+
+
+        .desktop-icon {
+            position: absolute;
+            top: 20px; /* Adjust as needed */
+            left: 20px; /* Adjust as needed */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            width: 80px; /* Icon area width */
+        }
+
+        .desktop-icon i {
+            font-size: 30px; /* Icon size */
+            margin-bottom: 5px;
+        }
+
+        .desktop-icon span {
+            font-size: 12px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Text shadow for readability */
+        }
+
+        /* Specific icon positions - you'd calculate these in a real scenario */
+        #chrome-icon { top: 20px; left: 20px; }
+        #file-explorer-icon { top: 120px; left: 20px; }
+        #notepad-icon { top: 220px; left: 20px; }
+        #settings-icon { top: 320px; left: 20px; } /* New icon position */
+
+
+        .window {
+            position: absolute;
+            border: 1px solid #ccc;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            background-color: #f0f0f0; /* Light gray window background */
+            border-radius: 8px; /* Rounded corners for windows */
+            overflow: hidden; /* Hide content outside border-radius */
+            display: flex;
+            flex-direction: column;
+            resize: both; /* Enable native resizing */
+            min-width: 200px;
+            min-height: 150px;
+            z-index: 10; /* Default z-index */
+        }
+
+        .window-titlebar {
+            height: 30px;
+            background: linear-gradient(to right, #0078d4, #005ea6); /* Gradient title bar */
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px;
+            cursor: grab; /* Indicate draggable */
+            user-select: none; /* Prevent text selection during drag */
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+         .window.active .window-titlebar {
+            background: linear-gradient(to right, #0078d4, #005ea6); /* Active gradient */
+         }
+
+         .window:not(.active) .window-titlebar {
+             background: linear-gradient(to right, #a0a0a0, #808080); /* Inactive gradient */
+         }
+
+
+        .window-title {
+            font-weight: bold;
+            flex-grow: 1; /* Allow title to take space */
+            white-space: nowrap; /* Prevent title wrap */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis */
+        }
+
+        .window-buttons {
+            display: flex;
+            flex-shrink: 0; /* Prevent buttons from shrinking */
+        }
+
+        .window-button {
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-weight: bold;
+        }
+
+        .window-button:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .window-button.close:hover {
+            background-color: #e81123; /* Red for close button */
+            color: white;
+        }
+
+        .window-content {
+            flex-grow: 1;
+            padding: 10px;
+            overflow: auto; /* Add scrollbars if content overflows */
+            background-color: white; /* White content background */
+        }
+
+        /* Chrome Window Specific Styles */
+        #chrome-window .window-titlebar {
+            background: linear-gradient(to right, #5a5a5a, #3a3a3a); /* Darker gray gradient for Chrome */
+        }
+
+         #chrome-window.active .window-titlebar {
+            background: linear-gradient(to right, #5a5a5a, #3a3a3a); /* Active gradient */
+         }
+
+         #chrome-window:not(.active) .window-titlebar {
+             background: linear-gradient(to right, #a0a0a0, #808080); /* Inactive gradient */
+         }
+
+
+        #chrome-window .window-content {
+            display: flex;
+            flex-direction: column;
+            padding: 0; /* Remove padding for full iframe/search bar width */
+        }
+
+        .search-bar-container {
+            display: flex;
+            padding: 5px;
+            background-color: #e0e0e0; /* Light gray background for search bar area */
+            border-bottom: 1px solid #ccc;
+            flex-shrink: 0; /* Prevent search bar from shrinking */
+        }
+
+        .search-bar-container input {
+            flex-grow: 1;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px; /* Rounded search bar */
+            margin-right: 5px;
+            outline: none;
+        }
+
+        .search-bar-container button {
+            padding: 5px 15px;
+            background-color: #4285F4; /* Google Blue */
+            color: white;
+            border: none;
+            border-radius: 20px; /* Rounded button */
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .search-bar-container button:hover {
+            background-color: #357ae8; /* Darker blue on hover */
+        }
+
+        #search-results-iframe {
+            flex-grow: 1;
+            border: none;
+            width: 100%;
+            height: 100%; /* Fill remaining space */
+        }
+
+         /* File Explorer specific styles */
+        #file-explorer-window .window-content {
+            padding: 10px;
+        }
+
+        /* Notepad specific styles */
+         #notepad-window .window-content {
+             padding: 10px;
+         }
+
+         #notepad-window textarea {
+             width: 100%;
+             height: 100%;
+             border: none;
+             outline: none;
+             resize: none; /* Prevent textarea resizing separately */
+             font-family: monospace;
+             padding: 5px;
+         }
+
+        /* Settings Window Specific Styles */
+        #settings-window .window-content {
+            display: flex;
+            padding: 0; /* Remove padding for layout */
+        }
+
+        .settings-sidebar {
+            width: 200px; /* Fixed width sidebar */
+            background-color: #e0e0e0; /* Light gray sidebar background */
+            padding: 10px;
+            border-right: 1px solid #ccc;
+            overflow-y: auto; /* Add scrollbar if sidebar content overflows */
+            flex-shrink: 0; /* Prevent sidebar from shrinking */
+        }
+
+        .settings-sidebar-item {
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+        }
+
+         .settings-sidebar-item i {
+             margin-right: 10px;
+             width: 20px; /* Fixed width for icons */
+             text-align: center;
+         }
+
+
+        .settings-sidebar-item:hover {
+            background-color: #d0d0d0; /* Darker gray on hover */
+        }
+
+        .settings-main-content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto; /* Add scrollbar if main content overflows */
+        }
+
+        .settings-main-content h2 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .setting-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+         .setting-section:last-child {
+             border-bottom: none;
+             padding-bottom: 0;
+         }
+
+        .setting-item {
+            margin-bottom: 10px;
+        }
+
+        .setting-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .setting-item input[type="text"],
+        .setting-item select {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: calc(100% - 12px); /* Adjust for padding and border */
+        }
+
+        /* Specific content sections within settings main content */
+        .settings-content-section {
+            display: none; /* Initially hide all content sections */
+        }
+
+        .settings-content-section.active {
+            display: block; /* Show the active content section */
+        }
+
+
+        /* Basic styling for the resize handle (provided by user agent stylesheet for resize: both) */
+        .window::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            background: transparent; /* Make the corner invisible */
+            cursor: se-resize; /* Show resize cursor */
+        }
+
+        /* Shutdown/Startup Screens */
+        .full-screen-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000; /* Black background */
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            z-index: 2000; /* Ensure it's on top */
+            display: none; /* Initially hidden */
+            opacity: 0; /* Start with opacity 0 for fade-in */
+            transition: opacity 1s ease-in-out; /* Add transition for smooth fade */
+        }
+
+        #shutting-down-screen {
+            background-color: #001f3f; /* Dark blue */
+        }
+
+        #pc-off-screen {
+             background-color: #000; /* Black */
+        }
+
+        #starting-up-screen {
+            background-color: #0078d4; /* Windows blue */
+        }
+
+        .loading-circle-container {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .loading-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 8px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            animation: spin 1s linear infinite; /* Basic spin animation */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+         /* Specific loading circle for spacebar hold */
+        #spacebar-hold-circle {
+            width: 100px;
+            height: 100px;
+            border: 8px solid rgba(255, 255, 255, 0.3); /* Outer ring */
+            border-radius: 50%;
+            position: relative;
+            margin-top: 20px;
+            overflow: hidden; /* Hide the filling part outside the circle */
+        }
+
+        #spacebar-hold-circle-fill {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background-color: rgb(255, 255, 255); /* Solid white fill color */
+            /* Initial state: completely clipped */
+            clip-path: circle(0% at 50% 50%);
+            -webkit-clip-path: circle(0% at 50% 50%); /* For broader compatibility */
+        }
+
+        #spacebar-hold-text {
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+
+    </style>
+</head>
+<body>
+
+    <div id="desktop">
+        <div class="desktop-icon" id="chrome-icon">
+             <i class="fab fa-chrome"></i> <span>Google Chrome</span>
+        </div>
+         <div class="desktop-icon" id="file-explorer-icon" style="top: 120px; left: 20px;">
+             <i class="fas fa-folder"></i> <span>File Explorer</span>
+        </div>
+        <div class="desktop-icon" id="notepad-icon" style="top: 220px; left: 20px;">
+             <i class="fas fa-file-alt"></i> <span>Notepad</span>
+        </div>
+         <div class="desktop-icon" id="settings-icon" style="top: 320px; left: 20px;">
+             <i class="fas fa-cog"></i> <span>Settings</span>
+        </div>
+
+
+        <div id="chrome-window" class="window" style="top: 50px; left: 100px; width: 600px; height: 400px; display: none;">
+            <div class="window-titlebar">
+                <span class="window-title">Google Chrome</span>
+                <div class="window-buttons">
+                    <div class="window-button minimize">-</div>
+                    <div class="window-button maximize">□</div>
+                    <div class="window-button close">x</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="search-bar-container">
+                    <input type="text" id="search-input" placeholder="Search Google or type a URL">
+                    <button id="search-button">Search</button>
+                </div>
+                <iframe id="search-results-iframe" src="https://www.google.com/webhp?igu=1"></iframe>
+            </div>
+        </div>
+
+         <div id="file-explorer-window" class="window" style="top: 80px; left: 150px; width: 500px; height: 350px; display: none;">
+            <div class="window-titlebar">
+                <span class="window-title">File Explorer</span>
+                <div class="window-buttons">
+                    <div class="window-button minimize">-</div>
+                    <div class="window-button maximize">□</div>
+                    <div class="window-button close">x</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <p>This is a simulated File Explorer window.</p>
+                <ul>
+                    <li>Documents</li>
+                    <li>Downloads</li>
+                    <li>Pictures</li>
+                    <li>Videos</li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="notepad-window" class="window" style="top: 110px; left: 200px; width: 400px; height: 300px; display: none;">
+            <div class="window-titlebar">
+                <span class="window-title">Notepad</span>
+                <div class="window-buttons">
+                    <div class="window-button minimize">-</div>
+                    <div class="window-button maximize">□</div>
+                    <div class="window-button close">x</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <textarea placeholder="Start typing..."></textarea>
+            </div>
+        </div>
+
+        <div id="settings-window" class="window" style="top: 140px; left: 250px; width: 700px; height: 500px; display: none;">
+            <div class="window-titlebar">
+                <span class="window-title">Settings</span>
+                <div class="window-buttons">
+                    <div class="window-button minimize">-</div>
+                    <div class="window-button maximize">□</div>
+                    <div class="window-button close">x</div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="settings-sidebar">
+                    <div class="settings-sidebar-item active" data-content="system-settings">
+                        <i class="fas fa-desktop"></i> System
+                    </div>
+                    <div class="settings-sidebar-item" data-content="network-settings">
+                         <i class="fas fa-network-wired"></i> Network & Internet
+                    </div>
+                     <div class="settings-sidebar-item" data-content="personalization-settings">
+                        <i class="fas fa-paint-brush"></i> Personalization
+                    </div>
+                     <div class="settings-sidebar-item" data-content="accounts-settings">
+                        <i class="fas fa-users"></i> Accounts
+                    </div>
+                     <div class="settings-sidebar-item" data-content="gaming-settings">
+                        <i class="fas fa-gamepad"></i> Gaming
+                    </div>
+                    </div>
+                <div class="settings-main-content">
+                    <div id="system-settings" class="settings-content-section active">
+                        <h2>System</h2>
+                        <div class="setting-section">
+                            <div class="setting-item">
+                                <label for="display-resolution">Display Resolution:</label>
+                                <select id="display-resolution">
+                                    <option value="1920x1080">1920 x 1080</option>
+                                    <option value="1366x768">1366 x 768</option>
+                                    <option value="1280x720">1280 x 720</option>
+                                </select>
+                            </div>
+                             <div class="setting-item">
+                                <label for="scale-layout">Scale and layout:</label>
+                                <select id="scale-layout">
+                                    <option value="100">100% (Recommended)</option>
+                                    <option value="125">125%</option>
+                                    <option value="150">150%</option>
+                                </select>
+                            </div>
+                        </div>
+                         <div class="setting-section">
+                             <h3>Sound</h3>
+                             <p>Output device: Speakers (Realtek Audio)</p>
+                             <p>Input device: Microphone Array (Realtek Audio)</p>
+                         </div>
+                    </div>
+
+                     <div id="network-settings" class="settings-content-section">
+                         <h2>Network & Internet</h2>
+                        <div class="setting-section">
+                            <div class="setting-item">
+                                <label for="network-status">Network Status:</label>
+                                <input type="text" id="network-status" value="Connected (Wi-Fi)" readonly>
+                            </div>
+                             <div class="setting-item">
+                                <label for="wifi-networks">Available Networks:</label>
+                                <select id="wifi-networks">
+                                    <option value="mywifi">MyHomeNetwork</option>
+                                    <option value="publicwifi">Public_Guest_WiFi</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                     <div id="personalization-settings" class="settings-content-section">
+                         <h2>Personalization</h2>
+                        <div class="setting-section">
+                            <div class="setting-item">
+                                <label for="background-image">Background:</label>
+                                <select id="background-image">
+                                    <option value="default">Default Image</option>
+                                    <option value="blue">Solid Blue</option>
+                                     <option value="green">Solid Green</option>
+                                    </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="accounts-settings" class="settings-content-section">
+                         <h2>Accounts</h2>
+                        <div class="setting-section">
+                            <p>User Name: Simulated User</p>
+                            <p>Account Type: Administrator</p>
+                        </div>
+                    </div>
+
+                     <div id="gaming-settings" class="settings-content-section">
+                         <h2>Gaming</h2>
+                        <div class="setting-section">
+                            <p>Xbox Game Bar: Enabled</p>
+                            <p>Captures: Record in background when I'm playing a game (On)</p>
+                        </div>
+                    </div>
+
+                    </div>
+            </div>
+        </div>
+
+
+        <div id="start-menu">
+            <div class="start-menu-item" data-target-window="chrome-window">
+                <i class="fab fa-chrome"></i> Google Chrome
+            </div>
+             <div class="start-menu-item" data-target-window="file-explorer-window">
+                <i class="fas fa-folder"></i> File Explorer
+            </div>
+             <div class="start-menu-item" data-target-window="notepad-window">
+                <i class="fas fa-file-alt"></i> Notepad
+            </div>
+             <div class="start-menu-item" data-target-window="settings-window">
+                 <i class="fas fa-cog"></i> Settings
+            </div>
+             <div class="start-menu-item" id="shutdown-item">
+                <i class="fas fa-power-off"></i> Shutdown
+            </div>
+            </div>
+
+
+    </div>
+
+    <div id="taskbar">
+        <div id="start-button">
+             <i class="fab fa-windows"></i> <span>Start</span>
+        </div>
+        </div>
+
+    <div id="shutting-down-screen" class="full-screen-message">
+        <div class="loading-circle-container">
+            <div class="loading-circle"></div>
+        </div>
+        <p>Shutting Down...</p>
+    </div>
+
+    <div id="pc-off-screen" class="full-screen-message">
+        <p>PC is Off</p>
+        <div id="spacebar-hold-circle">
+            <div id="spacebar-hold-circle-fill"></div>
+        </div>
+        <p id="spacebar-hold-text">Press and hold SPACE to start</p>
+    </div>
+
+    <div id="starting-up-screen" class="full-screen-message">
+         <div class="loading-circle-container">
+            <div class="loading-circle"></div>
+        </div>
+        <p>Starting Up...</p>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const desktop = document.getElementById('desktop');
+            const windows = document.querySelectorAll('.window');
+            const desktopIcons = document.querySelectorAll('.desktop-icon');
+            const startButton = document.getElementById('start-button');
+            const startMenu = document.getElementById('start-menu');
+            const startMenuItems = document.querySelectorAll('.start-menu-item');
+            const shutdownItem = document.getElementById('shutdown-item');
+
+            // Shutdown/Startup Screens
+            const shuttingDownScreen = document.getElementById('shutting-down-screen');
+            const pcOffScreen = document.getElementById('pc-off-screen');
+            const startingUpScreen = document.getElementById('starting-up-screen');
+            const spacebarHoldCircleFill = document.getElementById('spacebar-hold-circle-fill');
+            const spacebarHoldText = document.getElementById('spacebar-hold-text');
+
+            // Settings Window Elements
+            const settingsWindow = document.getElementById('settings-window');
+            const settingsSidebarItems = settingsWindow.querySelectorAll('.settings-sidebar-item');
+            const settingsContentSections = settingsWindow.querySelectorAll('.settings-content-section');
+            const backgroundImageSelect = settingsWindow.querySelector('#background-image');
+            const displayResolutionSelect = settingsWindow.querySelector('#display-resolution'); // Get reference to resolution select
+
+
+            let activeWindow = null;
+            let isDragging = false;
+            let dragOffsetX, dragOffsetY;
+            let isPoweredOff = false;
+            let isHoldingSpace = false;
+            let spacebarHoldTimer = null;
+            const requiredHoldTime = 2000; // 2 seconds in milliseconds
+            let holdStartTime = 0;
+            const fadeDuration = 1000; // 1 second for fade transitions
+
+
+            // Function to bring a window to the front and mark it as active
+            const activateWindow = (windowElement) => {
+                 windows.forEach(win => {
+                    win.style.zIndex = 10; // Reset others
+                    win.classList.remove('active'); // Remove active class
+                });
+                windowElement.style.zIndex = 20; // Bring clicked to front
+                windowElement.classList.add('active'); // Add active class
+                activeWindow = windowElement; // Set active window
+            };
+
+            // Function to open a window by its ID
+            const openWindow = (windowId) => {
+                 const targetWindow = document.getElementById(windowId);
+                 if (targetWindow) {
+                     targetWindow.style.display = 'flex'; // Show the window
+                     activateWindow(targetWindow); // Bring it to front and activate
+                     hideStartMenu(); // Hide start menu after opening a window
+                 }
+            };
+
+            // Function to hide all windows
+            const hideAllWindows = () => {
+                windows.forEach(win => {
+                    win.style.display = 'none';
+                });
+                activeWindow = null; // No active window when all are hidden
+            };
+
+            // Function to show the desktop and taskbar
+            const showDesktop = () => {
+                 desktop.style.display = 'block';
+                 document.getElementById('taskbar').style.display = 'flex';
+            };
+
+            // Function to hide the desktop and taskbar
+            const hideDesktop = () => {
+                 desktop.style.display = 'none';
+                 document.getElementById('taskbar').style.display = 'none';
+            };
+
+
+            // --- Shutdown and Startup Logic ---
+
+            const initiateShutdown = () => {
+                if (isPoweredOff) return; // Already off
+
+                hideAllWindows();
+                hideDesktop();
+                hideStartMenu();
+
+                // Fade in shutting down screen
+                shuttingDownScreen.style.display = 'flex';
+                // Use a small timeout to allow display:flex to apply before transition
+                setTimeout(() => {
+                    shuttingDownScreen.style.opacity = 1;
+                }, 50);
+
+
+                isPoweredOff = true;
+
+                // Wait for shutting down duration, then fade out
+                setTimeout(() => {
+                    shuttingDownScreen.style.opacity = 0;
+                    // Wait for fade out transition to complete, then change screen
+                    setTimeout(() => {
+                        shuttingDownScreen.style.display = 'none';
+                        // Fade in PC off screen
+                        pcOffScreen.style.display = 'flex';
+                         setTimeout(() => {
+                             pcOffScreen.style.opacity = 1;
+                         }, 50);
+
+                        // Reset spacebar hold visual
+                        updateSpacebarHoldCircle(0);
+                        spacebarHoldText.textContent = 'Press and hold SPACE to start';
+
+                    }, fadeDuration); // Wait for fade out
+                }, 3000); // Show shutting down screen for 3 seconds
+            };
+
+            const initiateStartup = () => {
+                 if (!isPoweredOff) return; // Already on
+
+                 // Fade out PC off screen
+                 pcOffScreen.style.opacity = 0;
+
+                 // Wait for fade out transition to complete, then change screen
+                 setTimeout(() => {
+                     pcOffScreen.style.display = 'none';
+                     // Fade in starting up screen
+                     startingUpScreen.style.display = 'flex';
+                     setTimeout(() => {
+                         startingUpScreen.style.opacity = 1;
+                     }, 50);
+
+                     // Wait for starting up duration, then fade out
+                     setTimeout(() => {
+                         startingUpScreen.style.opacity = 0;
+                         // Wait for fade out transition to complete, then show desktop
+                         setTimeout(() => {
+                             startingUpScreen.style.display = 'none';
+                             showDesktop();
+                             isPoweredOff = false;
+                             // Optionally re-open some default windows here
+                         }, fadeDuration); // Wait for fade out
+                     }, 1000); // Show starting up screen for 1 second
+
+                 }, fadeDuration); // Wait for fade out
+            };
+
+            const updateSpacebarHoldCircle = (percentage) => {
+                // Calculate the radius for the clip-path circle
+                // Radius goes from 0% to 50% of the element's size
+                const radius = percentage / 100 * 50;
+
+                // Use clip-path: circle() to simulate a radial fill
+                // The circle is centered at 50% 50% and its radius increases
+                spacebarHoldCircleFill.style.clipPath = `circle(${radius}% at 50% 50%)`;
+                spacebarHoldCircleFill.style.webkitClipPath = `circle(${radius}% at 50% 50%)`; // For broader compatibility
+
+                spacebarHoldText.textContent = `Holding SPACE... ${percentage.toFixed(0)}%`;
+            };
+
+
+            // --- Event Listeners ---
+
+            // Bring window to front on click
+            desktop.addEventListener('mousedown', (e) => {
+                if (isPoweredOff) return;
+                const clickedWindow = e.target.closest('.window');
+                if (clickedWindow) {
+                   activateWindow(clickedWindow);
+                }
+                 // Hide start menu if clicking anywhere else on the desktop
+                if (!startMenu.contains(e.target) && e.target !== startButton && startMenu.style.display === 'flex') {
+                     hideStartMenu();
+                }
+            });
+
+            // Make windows draggable
+            document.querySelectorAll('.window-titlebar').forEach(titlebar => {
+                titlebar.addEventListener('mousedown', (e) => {
+                     if (isPoweredOff) return;
+                    // Only start drag if clicking directly on the titlebar, not buttons
+                    if (!e.target.classList.contains('window-button')) {
+                        isDragging = true;
+                        const windowElement = titlebar.parentElement;
+                        dragOffsetX = e.clientX - windowElement.getBoundingClientRect().left;
+                        dragOffsetY = e.clientY - windowElement.getBoundingClientRect().top;
+                        windowElement.style.cursor = 'grabbing'; // Change cursor while dragging
+                         activateWindow(windowElement); // Activate window on drag start
+                    }
+                });
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || !activeWindow || isPoweredOff) return;
+
+                const newX = e.clientX - dragOffsetX;
+                const newY = e.clientY - dragOffsetY;
+
+                // Prevent dragging outside the desktop area
+                const desktopRect = desktop.getBoundingClientRect();
+                const windowRect = activeWindow.getBoundingClientRect();
+
+                const boundedX = Math.max(0, Math.min(newX, desktopRect.width - windowRect.width));
+                const boundedY = Math.max(0, Math.min(newY, desktopRect.height - windowRect.height));
+
+                activeWindow.style.left = boundedX + 'px';
+                activeWindow.style.top = boundedY + 'px';
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging && activeWindow && !isPoweredOff) {
+                    isDragging = false;
+                    activeWindow.style.cursor = 'grab'; // Restore cursor
+                    // activeWindow = null; // Keep active window set after drag
+                }
+            });
+
+            // Window buttons functionality (basic)
+            document.querySelectorAll('.window-button.close').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    if (isPoweredOff) return;
+                    e.stopPropagation(); // Prevent triggering window activation
+                    const windowElement = e.target.closest('.window');
+                    windowElement.style.display = 'none'; // Hide window
+                     if (activeWindow === windowElement) {
+                        activeWindow = null; // Deselect if closing active window
+                     }
+                });
+            });
+
+            document.querySelectorAll('.window-button.minimize').forEach(button => {
+                button.addEventListener('click', (e) => {
+                     if (isPoweredOff) return;
+                     e.stopPropagation(); // Prevent triggering window activation
+                     const windowElement = e.target.closest('.window');
+                     // In a real OS, this minimizes to the taskbar. Here, we hide it.
+                     windowElement.style.display = 'none';
+                     if (activeWindow === windowElement) {
+                        activeWindow = null; // Deselect if minimizing active window
+                     }
+                });
+            });
+
+             document.querySelectorAll('.window-button.maximize').forEach(button => {
+                button.addEventListener('click', (e) => {
+                     if (isPoweredOff) return;
+                     e.stopPropagation(); // Prevent triggering window activation
+                     const windowElement = e.target.closest('.window');
+                     // Simple toggle maximize - in a real OS this is more complex
+                     if (windowElement.style.width === '100%' && windowElement.style.height === 'calc(100vh - 40px)') { // Account for taskbar height
+                         // Restore to previous size/position (requires storing state)
+                         // For simplicity, let's just set a default size
+                         windowElement.style.width = windowElement.dataset.prevWidth || '600px';
+                         windowElement.style.height = windowElement.dataset.prevHeight || '400px';
+                         windowElement.style.top = windowElement.dataset.prevTop || '50px';
+                         windowElement.style.left = windowElement.dataset.prevLeft || '100px';
+                     } else {
+                         // Store current size/position before maximizing
+                         windowElement.dataset.prevWidth = windowElement.style.width;
+                         windowElement.dataset.prevHeight = windowElement.style.height;
+                         windowElement.dataset.prevTop = windowElement.style.top;
+                         windowElement.dataset.prevLeft = windowElement.style.left;
+
+                         // Maximize
+                         windowElement.style.width = '100%';
+                         windowElement.style.height = 'calc(100vh - 40px)'; // Account for taskbar height
+                         windowElement.style.top = '0';
+                         windowElement.style.left = '0';
+                     }
+                });
+            });
+
+
+            // Google Chrome Search Functionality
+            const searchInput = document.getElementById('search-input');
+            const searchButton = document.getElementById('search-button');
+            const searchResultsIframe = document.getElementById('search-results-iframe');
+
+            const performSearch = () => {
+                const query = searchInput.value.trim();
+                if (query) {
+                    // Attempt to load as a URL first
+                    let url = query;
+                    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                        // If not a URL, perform a Google search
+                        url = `https://www.google.com/search?igu=1&q=${encodeURIComponent(query)}`;
+                    }
+
+                    searchResultsIframe.src = url;
+                } else {
+                    // If input is empty, load the Google homepage
+                    searchResultsIframe.src = `https://www.google.com/webhp?igu=1`;
+                }
+            };
+
+            if (searchButton) searchButton.addEventListener('click', performSearch);
+            if (searchInput) searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+
+             // Make the iframe responsive within its container
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    if (entry.target.classList.contains('window-content')) { // Observe any window-content div
+                        const contentRect = entry.contentRect;
+                        const iframe = entry.target.querySelector('iframe');
+                        const searchBar = entry.target.querySelector('.search-bar-container');
+                        const searchBarHeight = searchBar ? searchBar.offsetHeight : 0;
+
+                        if (iframe) {
+                             iframe.style.width = contentRect.width + 'px';
+                             iframe.style.height = (contentRect.height - searchBarHeight) + 'px'; // Subtract search bar height
+                        }
+                    }
+                }
+            });
+
+            // Start observing the window-content div of all windows that might contain an iframe
+            document.querySelectorAll('.window-content').forEach(contentDiv => {
+                 if (contentDiv.querySelector('iframe')) {
+                     resizeObserver.observe(contentDiv);
+                 }
+            });
+
+
+            // Initial resize of iframe on load
+            window.addEventListener('load', () => {
+                 document.querySelectorAll('.window-content').forEach(contentDiv => {
+                     const iframe = contentDiv.querySelector('iframe');
+                     const searchBar = contentDiv.querySelector('.search-bar-container');
+                     const searchBarHeight = searchBar ? searchBar.offsetHeight : 0;
+                     if(iframe) {
+                        const contentRect = contentDiv.getBoundingClientRect();
+                         iframe.style.width = contentRect.width + 'px';
+                         iframe.style.height = (contentRect.height - searchBarHeight) + 'px';
+                     }
+                 });
+            });
+
+            // Handle desktop icon clicks to open windows
+            desktopIcons.forEach(icon => {
+                icon.addEventListener('click', () => {
+                     if (isPoweredOff) return;
+                    const targetWindowId = icon.id.replace('-icon', '-window');
+                    openWindow(targetWindowId);
+                });
+            });
+
+            // Start Button and Start Menu Functionality
+            const showStartMenu = () => {
+                startMenu.style.display = 'flex';
+            };
+
+            const hideStartMenu = () => {
+                startMenu.style.display = 'none';
+            };
+
+            startButton.addEventListener('click', (e) => {
+                if (isPoweredOff) return;
+                e.stopPropagation(); // Prevent click from hiding the menu immediately
+                if (startMenu.style.display === 'flex') {
+                    hideStartMenu();
+                } else {
+                    showStartMenu();
+                }
+            });
+
+            // Handle clicks on start menu items to open windows
+            startMenuItems.forEach(item => {
+                // Exclude the shutdown item from the default openWindow behavior
+                if (item.id !== 'shutdown-item') {
+                    item.addEventListener('click', () => {
+                         if (isPoweredOff) return;
+                        const targetWindowId = item.dataset.targetWindow;
+                        openWindow(targetWindowId);
+                    });
+                }
+            });
+
+            // Handle click on Shutdown start menu item
+            if (shutdownItem) {
+                 shutdownItem.addEventListener('click', () => {
+                     if (isPoweredOff) return;
+                     initiateShutdown();
+                 });
+            }
+
+
+            // Hide start menu if clicking anywhere on the desktop (handled by desktop mousedown)
+            // Also hide if clicking on the taskbar but not the start button
+            document.getElementById('taskbar').addEventListener('mousedown', (e) => {
+                 if (isPoweredOff) return;
+                 if (e.target !== startButton && !startButton.contains(e.target) && startMenu.style.display === 'flex') {
+                     hideStartMenu();
+                 }
+            });
+
+            // --- Spacebar Hold to Start Logic ---
+            document.addEventListener('keydown', (e) => {
+                if (isPoweredOff && e.key === ' ' && !isHoldingSpace) {
+                    isHoldingSpace = true;
+                    holdStartTime = Date.now();
+                    spacebarHoldTimer = setInterval(() => {
+                        const heldDuration = Date.now() - holdStartTime;
+                        const percentage = Math.min((heldDuration / requiredHoldTime) * 100, 100);
+                        updateSpacebarHoldCircle(percentage);
+
+                        if (heldDuration >= requiredHoldTime) {
+                            clearInterval(spacebarHoldTimer);
+                            isHoldingSpace = false; // Reset hold state
+                            initiateStartup();
+                        }
+                    }, 50); // Update every 50ms
+                }
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (isPoweredOff && e.key === ' ' && isHoldingSpace) {
+                    clearInterval(spacebarHoldTimer);
+                    isHoldingSpace = false;
+                    holdStartTime = 0;
+                    // Reset visual if spacebar released before required time
+                    if (Date.now() - holdStartTime < requiredHoldTime) {
+                         updateSpacebarHoldCircle(0);
+                         spacebarHoldText.textContent = 'Press and hold SPACE to start';
+                    }
+                }
+            });
+
+            // --- Settings Window Functionality ---
+
+            // Add data-content attributes to sidebar items and IDs to content sections
+            // (Already done in the HTML structure above)
+
+            // Add click listeners to sidebar items
+            settingsSidebarItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    // Remove 'active' class from all sidebar items and content sections
+                    settingsSidebarItems.forEach(i => i.classList.remove('active'));
+                    settingsContentSections.forEach(s => s.classList.remove('active'));
+
+                    // Add 'active' class to the clicked sidebar item
+                    item.classList.add('active');
+
+                    // Get the target content section ID from the data-content attribute
+                    const targetContentId = item.dataset.content;
+                    const targetContentSection = document.getElementById(targetContentId);
+
+                    // Add 'active' class to the corresponding content section
+                    if (targetContentSection) {
+                        targetContentSection.classList.add('active');
+                    }
+                });
+            });
+
+            // Simulate changing the background based on the select dropdown
+            if (backgroundImageSelect) {
+                backgroundImageSelect.addEventListener('change', (e) => {
+                    const selectedValue = e.target.value;
+                    const desktopBody = document.body; // Apply to the main body background
+
+                    // Reset background styles first
+                    desktopBody.style.background = '';
+                    desktopBody.style.backgroundColor = '';
+                    desktopBody.style.backgroundImage = '';
+
+                    if (selectedValue === 'default') {
+                        // Restore the original background image
+                         desktopBody.style.background = 'url(\'data:image/jpeg;base64,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\') no-repeat center center fixed';
+                         desktopBody.style.backgroundSize = 'cover';
+                    } else if (selectedValue === 'blue') {
+                        desktopBody.style.backgroundColor = '#0078d4'; /* Windows default blue */
+                    } else if (selectedValue === 'green') {
+                         desktopBody.style.backgroundColor = '#228B22'; /* Forest Green */
+                    }
+                    // Add more conditions for other background options
+                });
+            }
+
+             // Add basic interactivity to other settings elements (optional)
+             // For example, you could add listeners to the resolution/scale selects
+             // to log their values or show a simple message, but they won't
+             // actually change the browser window size or element scaling.
+             const scaleLayoutSelect = settingsWindow.querySelector('#scale-layout');
+             if(scaleLayoutSelect) {
+                 scaleLayoutSelect.addEventListener('change', (e) => {
+                     console.log('Simulated Scale and Layout Set:', e.target.value + '%');
+                      // In a real app, you might store this value or trigger a UI change
+                 });
+             }
+
+             // Simulate changing desktop resolution
+             if (displayResolutionSelect && desktop) {
+                 displayResolutionSelect.addEventListener('change', (e) => {
+                     const selectedValue = e.target.value;
+                     const [width, height] = selectedValue.split('x'); // Split "widthxheight"
+
+                     // Update the desktop element's size
+                     desktop.style.width = width + 'px';
+                     desktop.style.height = height + 'px';
+
+                     console.log('Simulated Display Resolution Set:', selectedValue);
+
+                     // Note: This only changes the size of the #desktop div.
+                     // Windows and icons will remain positioned relative to its top-left corner.
+                     // A true resolution change would require repositioning all elements,
+                     // which is significantly more complex. This provides a visual simulation.
+                 });
+             }
+
+
+        });
+    </script>
+
+</body>
+</html>
