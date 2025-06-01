@@ -16,31 +16,33 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px; /* Add some padding */
+            padding: 10px; /* Reduced padding */
             box-sizing: border-box; /* Include padding in element's total width and height */
+            /* Custom cursor: a smaller black dot */
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="3" height="3" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="black"/></svg>') 3 3, auto;
         }
         .slideshow-area {
             width: 100%; /* Take full width */
-            max-width: 800px; /* Max width */
+            max-width: 600px; /* Reduced max-width */
             display: flex;
             flex-direction: column;
             align-items: center;
         }
         .slideshow-container {
             width: 100%; /* Take full width of its parent (.slideshow-area) */
-            margin-bottom: 20px; /* Space below slideshow */
+            margin-bottom: 10px; /* Reduced margin */
             background-color: #ffffff;
+            padding: 15px; /* Reduced padding */
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             overflow-y: auto; /* Enable vertical scrolling for content */
-            max-height: 80vh; /* Limit height to make it scrollable */
-            padding: 20px; /* Padding inside the container */
+            max-height: 70vh; /* Reduced max-height */
         }
 
         .slide-item {
             text-align: center;
-            margin-bottom: 30px; /* Space between slides */
-            padding-bottom: 20px; /* Padding at the bottom of each item */
+            margin-bottom: 20px; /* Reduced space between slides */
+            padding-bottom: 15px; /* Reduced padding at the bottom of each item */
             border-bottom: 1px solid #eee; /* Separator line */
         }
 
@@ -52,16 +54,16 @@
         .slide-item img, .slide-item video {
             width: 100%;
             height: auto;
-            max-height: 400px;
+            max-height: 300px; /* Reduced max-height for media */
             object-fit: contain; /* Use contain to show full image/video without cropping */
             border-radius: 8px;
-            margin-bottom: 10px; /* Space between media and caption */
+            margin-bottom: 8px; /* Reduced space between media and caption */
         }
 
         .slide-item .caption {
             color: #333;
-            font-size: 1.2rem;
-            padding: 5px 15px;
+            font-size: 1.1rem; /* Slightly smaller font size */
+            padding: 5px 10px; /* Reduced padding */
             text-align: center;
         }
 
@@ -71,7 +73,7 @@
                 max-width: 95%; /* Use more width on smaller screens */
             }
             .slide-item .caption {
-                font-size: 1rem; /* Smaller text on small screens */
+                font-size: 0.95rem; /* Smaller text on small screens */
             }
         }
     </style>
@@ -79,32 +81,52 @@
 <body>
 
     <div class="slideshow-area" id="slideshowArea">
-        <h1 class="text-2xl font-bold text-gray-800 mb-4">My Photo & Video Album</h1>
+        <h1 class="text-xl font-bold text-gray-800 mb-3">My Photo & Video Album</h1>
         <div class="slideshow-container">
             <div class="slide-item">
-                <img src="https://placehold.co/800x400/FF5733/ffffff?text=Your+Image+1" alt="Image 1">
+                <img src="picture1.jpg" alt="Picture 1">
                 <div class="caption">A beautiful sunset over the mountains.</div>
             </div>
 
             <div class="slide-item">
                 <video controls loop muted autoplay>
-                    <source src="VID_20240819_064143.mp4" type="video/mp4">
+                    <source src="video1.mp4" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
-                <div class="caption">A bunch of mist generators.</div>
+                <div class="caption">A short clip of birds flying.</div>
             </div>
 
             <div class="slide-item">
-                <img src="webcam-toy-photo1.jpg" alt="Image 2">
-                <div class="caption">a bunch of speakers.</div>
+                <img src="picture2.jpg" alt="Picture 2">
+                <div class="caption">City skyline at night.</div>
             </div>
 
             <div class="slide-item">
                 <video controls loop muted autoplay>
-                    <source src="https://www.w3schools.com/html/movie.mp4" type="video/mp4">
+                    <source src="video2.mp4" type="video/mp4">
                     Your browser does not support the video tag.
                 </video>
                 <div class="caption">A serene beach scene.</div>
+            </div>
+
+            <div class="slide-item">
+                <img src="picture3.jpg" alt="Picture 3">
+                <div class="caption">A vibrant abstract painting.</div>
+            </div>
+
+            <div class="slide-item">
+                <img src="picture4.jpg" alt="Picture 4">
+                <div class="caption">An old, weathered wooden door.</div>
+            </div>
+
+            <div class="slide-item">
+                <img src="picture5.jpg" alt="Picture 5">
+                <div class="caption">Lush green forest canopy.</div>
+            </div>
+
+            <div class="slide-item">
+                <img src="picture6.jpg" alt="Picture 6">
+                <div class="caption">A cozy fireplace with a crackling fire.</div>
             </div>
         </div>
     </div>
