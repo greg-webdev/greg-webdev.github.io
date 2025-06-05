@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Parkour Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #e0f2f7; /* Lighter sky blue */ }
+        canvas { display: block; }
+        #game-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333; /* Darker text for readability */
+            background-color: rgba(255, 255, 255, 0.7); /* Slightly transparent white */
+            padding: 10px;
+            border-radius: 8px;
+            z-index: 100;
+            font-size: 14px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* More pronounced shadow */
+            user-select: none; /* Prevent text selection */
+            transition: all 0.3s ease-in-out; /* Smooth transition for sizing */
+        }
+        #game-info.collapsed {
+            padding-bottom: 0;
+            overflow: hidden;
+            max-height: 40px; /* Adjust based on initial height of heading + arrow */
+            box-shadow: none; /* Remove shadow when collapsed for cleaner look */
+        }
+        #game-info .controls-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 200px; /* A value larger than the max height of content */
+            opacity: 1;
+        }
+        #game-info.collapsed .controls-content {
+            max-height: 0;
+            opacity: 0;
+        }
+        #toggle-controls {
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 1em;
+            display: inline-block;
+            transition: transform 0.3s ease-in-out;
+        }
+        #game-info.collapsed #toggle-controls {
+            transform: rotate(-90deg); /* Rotate arrow when collapsed */
+        }
+        #game-status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 2.5em; /* Larger font */
+            font-weight: bold;
+            display: none; /* Hidden by default */
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.7); /* Brighter glow */
+            border: 3px solid #ffcc00; /* Gold border */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Text shadow for pop */
+        }
+    </style>
+</head>
+<body>
+    <div id="game-info">
+        <h3>Controls: <span id="toggle-controls">&#9660;</span></h3> <!-- Downward arrow -->
+        <div class="controls-content">
+            <p>W: Forward</p>
+            <p>A: Left</p>
+            <p>S: Backward</p>
+            <p>D: Right</p>
+            <p>Space: Jump</p>
+            <p>Scroll Wheel: Zoom Camera</p>
+            <p>Right Click + Drag: Rotate View (when mouse not locked)</p>
+            <p>Click Canvas: Lock Mouse for First-Person View</p>
+            <p>ESC: Unlock Mouse</p>
+        </div>
+    </div>
+    <div id="game-status"></div>
+
+    <script>
+        // --- Global Game Variables ---
+        let scene, camera, renderer;
+        let player;
+        let playerVelocity = new THREE.Vector3();
+        const playerSpeed = 30; // Units per second - Increased SIGNIFICANTLY for much faster movement
+        const jumpStrength = 25; // Initial upward velocity on jump - Adjusted for faster jumps
+        const gravity = -50; // Units per second squared - Increased for faster, less floaty jumps
+        let onGround = false;
+        let lastUpdateTime = performance.now(); // Use performance.now() for better accuracy
+
+        const platforms = []; // Array to store all platforms
+        let currentLevel = 1; // Current game level
+
+        // Input states
+        let keys = {
+            w: false, a: false, s: false, d: false, space: false
+        };
+
+        // Camera control variables
+        let isRightClickDown = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+        let cameraDistance = 15; // Initial distance from player
+        let cameraAngleX = Math.PI / 6; // Initial vertical angle (30 degrees)
+        let cameraAngleY = -Math.PI / 4; // Initial horizontal angle (-45 degrees)
+        const minCameraDistance = 5;
+        const maxCameraDistance = 30;
+
+        // Game UI elements
+        const gameStatusDiv = document.getElementById('game-status');
+        const gameInfoDiv = document.getElementById('game-info');
+        const toggleControlsBtn = document.getElementById('toggle-controls');
+
+        // --- Level End Platforms ---
+        let level1EndPlatform;
+        let level2EndPlatform;
+        let level3EndPlatform;
+        let level4EndPlatform;
+        let level5EndPlatform; // For "Game Complete" check
+
+        // --- Initialization Function ---
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 200); // Add a bit of fog for depth
+
+            // Camera setup - Initialized after player is created below.
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio); // High DPI support
+            renderer.shadowMap.enabled = true; // Enable shadow maps
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x606060); // Softer ambient light
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1); // Main light source (sun)
+            sunLight.position.set(20, 50, 30); // Position the sun
+            sunLight.castShadow = true; // Make it cast shadows
+            scene.add(sunLight);
+
+            // Configure shadow camera for directional light
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 150;
+            sunLight.shadow.camera.left = -50;
+            sunLight.shadow.camera.right = 50;
+            sunLight.shadow.camera.top = 50;
+            sunLight.shadow.camera.bottom = -50;
+            // scene.add(new THREE.CameraHelper(sunLight.shadow.camera)); // Uncomment to visualize shadow camera
+
+            // Player mesh
+            const playerGeometry = new THREE.BoxGeometry(1.5, 3, 1.5); // Slightly wider, taller player
+            const playerMaterial = new THREE.MeshLambertMaterial({ color: 0x007bff }); // Brighter blue
+            player = new THREE.Mesh(playerGeometry, playerMaterial);
+            player.position.set(0, 1.5, 0); // Start player at Y=1.5 (half of its height)
+            player.castShadow = true; // Player casts shadow
+            scene.add(player);
+
+            // Set initial camera position relative to player AFTER player is created
+            updateCameraPosition(); 
+
+            // Create ground plane
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x66bb6a }); // Green ground
+            const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+            ground.position.y = -0.25; // Slightly below y=0 platforms
+            ground.receiveShadow = true; // Ground receives shadows
+            scene.add(ground);
+
+            // Create initial platforms for Level 1
+            createLevel(1);
+
+            // Event Listeners
+            renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault()); // Disable context menu
+            renderer.domElement.addEventListener('wheel', onMouseWheel);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            window.addEventListener('resize', onWindowResize);
+
+            // Toggle controls menu visibility
+            toggleControlsBtn.addEventListener('click', () => {
+                gameInfoDiv.classList.toggle('collapsed');
+            });
+
+
+            // --- Pointer Lock API Setup ---
+            // Request pointer lock when canvas is clicked
+            renderer.domElement.addEventListener('click', () => {
+                renderer.domElement.requestPointerLock();
+            });
+
+            // Listen for pointer lock changes
+            document.addEventListener('pointerlockchange', pointerLockChange, false);
+            document.addEventListener('mozpointerlockchange', pointerLockChange, false); // For Firefox
+            document.addEventListener('webkitpointerlockchange', pointerLockChange, false); // For Webkit
+        }
+
+        // --- Event Handlers ---
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onKeyDown(event) {
+            switch (event.key.toLowerCase()) {
+                case 'w': keys.w = true; break;
+                case 'a': keys.a = true; break;
+                case 's': keys.s = true; break;
+                case 'd': keys.d = true; break;
+                case ' ': // Spacebar
+                    if (onGround) {
+                        playerVelocity.y = jumpStrength;
+                        onGround = false; // Player is no longer on the ground once jump initiated
+                    }
+                    keys.space = true; // Keep true while pressed
+                    break;
+            }
+        }
+
+        function onKeyUp(event) {
+            switch (event.key.toLowerCase()) {
+                case 'w': keys.w = false; break;
+                case 'a': keys.a = false; break;
+                case 's': keys.s = false; break;
+                case 'd': keys.d = false; break;
+                case ' ': keys.space = false; break;
+            }
+        }
+
+        function onMouseWheel(event) {
+            // Only zoom if mouse is NOT locked to avoid conflicting with potential first-person camera control schemes
+            if (document.pointerLockElement !== renderer.domElement) {
+                cameraDistance += event.deltaY * 0.05; // Adjust zoom sensitivity
+                cameraDistance = Math.max(minCameraDistance, Math.min(maxCameraDistance, cameraDistance));
+                updateCameraPosition();
+            }
+        }
+
+        function onMouseDown(event) {
+            if (event.button === 2 && document.pointerLockElement !== renderer.domElement) { // Right mouse button, only if not pointer locked
+                isRightClickDown = true;
+                previousMouseX = event.clientX;
+                previousMouseY = event.clientY;
+            }
+        }
+
+        function onMouseUp(event) {
+            if (event.button === 2) { // Right mouse button
+                isRightClickDown = false;
+            }
+        }
+
+        function onMouseMove(event) {
+            const isPointerLocked = document.pointerLockElement === renderer.domElement;
+
+            let deltaX = 0;
+            let deltaY = 0;
+
+            if (isPointerLocked) {
+                // If pointer is locked, use movementX/Y for camera rotation
+                deltaX = event.movementX;
+                deltaY = event.movementY;
+            } else if (isRightClickDown) {
+                // If pointer is not locked, only rotate if right mouse button is down
+                deltaX = event.clientX - previousMouseX;
+                deltaY = event.clientY - previousMouseY;
+            } else {
+                // If not locked and not right-clicking, no camera movement
+                return;
+            }
+
+            // Apply rotation based on deltas
+            cameraAngleY += deltaX * 0.007; // Horizontal rotation sensitivity
+            cameraAngleX -= deltaY * 0.007; // Vertical rotation sensitivity (non-inverted)
+
+            cameraAngleX = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleX)); // Clamp vertical angle to prevent flipping
+
+            // Only update previousMouseX/Y if not pointer locked,
+            // as movementX/Y are relative deltas and previous coordinates are not needed for calculation
+            if (!isPointerLocked) {
+                previousMouseX = event.clientX;
+                previousMouseY = event.clientY;
+            }
+
+            updateCameraPosition();
+        }
+
+        function pointerLockChange() {
+            if (document.pointerLockElement === renderer.domElement) {
+                // Pointer was just locked
+                showGameStatus("Mouse Locked! (Press ESC to unlock)");
+                setTimeout(hideGameStatus, 2000); // Hide message after 2 seconds
+            } else {
+                // Pointer was just unlocked
+                showGameStatus("Mouse Unlocked! (Click canvas to lock)");
+                isRightClickDown = false; // Ensure right click state is reset
+                setTimeout(hideGameStatus, 2000); // Hide message after 2 seconds
+            }
+        }
+
+
+        // --- Game Logic Functions ---
+        function createPlatform(x, y, z, width, height, depth, color) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshLambertMaterial({ color: color });
+            const platform = new THREE.Mesh(geometry, material);
+            platform.position.set(x, y + height / 2, z); // Adjust y to be centered at given y
+            platform.receiveShadow = true; // Platforms receive shadows
+            platform.castShadow = true; // Platforms can cast shadows (if higher up)
+            scene.add(platform);
+            platforms.push(platform);
+            return platform; // Return the created platform for specific checks (like end platform)
+        }
+
+        // Function to clear all existing platforms from the scene
+        function clearPlatforms() {
+            while (platforms.length > 0) {
+                const platform = platforms.pop();
+                scene.remove(platform);
+                platform.geometry.dispose();
+                platform.material.dispose();
+            }
+        }
+
+        // --- Level Creation Functions ---
+        function createLevel(levelNum) {
+            clearPlatforms();
+            currentLevel = levelNum;
+            player.position.set(0, 1.5, 0); // Reset player position for new level
+            playerVelocity.set(0, 0, 0);
+            onGround = true; // Player starts on ground for new level
+
+            switch(levelNum) {
+                case 1:
+                    showGameStatus("Level 1");
+                    createLevel1Platforms();
+                    break;
+                case 2:
+                    showGameStatus("Level 2!");
+                    createLevel2Platforms();
+                    break;
+                case 3:
+                    showGameStatus("Level 3!");
+                    createLevel3Platforms();
+                    break;
+                case 4:
+                    showGameStatus("Level 4!");
+                    createLevel4Platforms();
+                    break;
+                case 5:
+                    showGameStatus("Level 5!");
+                    createLevel5Platforms();
+                    break;
+                default:
+                    showGameStatus("Game Complete! You beat all levels!");
+                    break;
+            }
+        }
+
+        function createLevel1Platforms() {
+            // Parameters: x, y, z, width, height, depth, color
+            createPlatform(0, 0, 0, 8, 0.5, 8, 0x4CAF50); // Start platform (dark green)
+            createPlatform(15, 0, 0, 5, 0.5, 5, 0xFF5722); // Red-orange platform
+            createPlatform(25, 3, 10, 6, 0.5, 6, 0x2196F3); // Blue platform, higher
+            createPlatform(35, 0, -10, 7, 0.5, 7, 0xFFEB3B); // Yellow platform
+            createPlatform(45, 6, 0, 3, 0.5, 3, 0x9C27B0); // Purple platform, small and high
+            createPlatform(55, 2, 15, 4, 0.5, 4, 0x00BCD4); // Cyan platform
+            createPlatform(65, 8, -5, 2, 0.5, 2, 0xFF9800); // Orange platform, tiny
+            level1EndPlatform = createPlatform(75, 0, 0, 10, 0.5, 10, 0x795548); // Brownish end platform for Level 1
+        }
+
+        function createLevel2Platforms() {
+            // Harder platforms: smaller, higher, more spread out
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0x66bb6a); // Start platform for Level 2
+            createPlatform(10, 4, 0, 3, 0.5, 3, 0xF44336); // Red, higher jump
+            createPlatform(18, 8, 5, 2, 0.5, 2, 0x4CAF50); // Green, smaller, more precise
+            createPlatform(25, 12, -5, 3, 0.5, 3, 0xFFEB3B); // Yellow, high and far
+            createPlatform(30, 15, 0, 2, 0.5, 2, 0x9C27B0); // Purple, very high and small
+            createPlatform(38, 18, 8, 1, 0.5, 1, 0x2196F3); // Blue, very small, tricky
+            level2EndPlatform = createPlatform(45, 20, -10, 4, 0.5, 4, 0xFF5722); // Orange, end platform for Level 2
+        }
+
+        function createLevel3Platforms() {
+            // More verticality, smaller platforms, some gaps requiring precision
+            createPlatform(0, 0, 0, 6, 0.5, 6, 0xADD8E6); // Light blue start
+            createPlatform(8, 5, 0, 4, 0.5, 4, 0x87CEEB); // Sky blue
+            createPlatform(15, 10, 5, 3, 0.5, 3, 0x4682B4); // Steel blue
+            createPlatform(20, 15, -5, 2, 0.5, 2, 0x1E90FF); // Dodger blue
+            createPlatform(22, 20, 0, 2, 0.5, 2, 0x6A5ACD); // Slate blue
+            createPlatform(25, 25, 8, 1.5, 0.5, 1.5, 0x483D8B); // Dark slate blue
+            createPlatform(30, 28, 15, 1, 0.5, 1, 0x7B68EE); // Medium slate blue
+            level3EndPlatform = createPlatform(38, 30, 0, 5, 0.5, 5, 0xBA55D3); // Medium purple end platform for Level 3
+        }
+
+        function createLevel4Platforms() {
+            // Introducing more spaced out, smaller jumps, and potentially moving platforms (conceptually, not implemented as moving here)
+            createPlatform(0, 0, 0, 7, 0.5, 7, 0xFFD700); // Gold start
+            createPlatform(12, 0, 0, 2, 0.5, 2, 0xFFC107); // Amber, small jump
+            createPlatform(18, 4, 5, 2, 0.5, 2, 0xFF9800); // Orange, higher
+            createPlatform(22, 8, -5, 1.5, 0.5, 1.5, 0xF44336); // Red, even smaller
+            createPlatform(25, 12, 0, 1.5, 0.5, 1.5, 0xE91E63); // Pink
+            createPlatform(28, 16, 8, 1, 0.5, 1, 0x9C27B0); // Purple, very small
+            createPlatform(30, 18, 15, 0.8, 0.5, 0.8, 0x673AB7); // Deep purple, tiny
+            level4EndPlatform = createPlatform(35, 20, 0, 4, 0.5, 4, 0x2196F3); // Blue end platform for Level 4
+        }
+
+        function createLevel5Platforms() {
+            // Ultimate challenge: very small platforms, large gaps, requires full jump strength and speed
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0x00FFFF); // Cyan start
+            createPlatform(10, 5, 0, 1.5, 0.5, 1.5, 0x00BCD4); // Teal, high and small
+            createPlatform(15, 10, 8, 1, 0.5, 1, 0x009688); // Dark teal, very small
+            createPlatform(18, 15, -8, 0.8, 0.5, 0.8, 0x4CAF50); // Green, super tiny, far
+            createPlatform(20, 20, 0, 0.7, 0.5, 0.7, 0x8BC34A); // Light green, even smaller
+            createPlatform(22, 25, 10, 0.6, 0.5, 0.6, 0xCDDC39); // Lime green, extremely small
+            createPlatform(24, 30, -10, 0.5, 0.5, 0.5, 0xFFEB3B); // Yellow, minimal
+            level5EndPlatform = createPlatform(28, 35, 0, 3, 0.5, 3, 0xFF4500); // OrangeRed, final platform for Level 5
+        }
+
+
+        function updateCameraPosition() {
+            // Calculate spherical coordinates for camera position relative to player
+            const polarAngle = cameraAngleX; // Phi (vertical angle)
+            const azimuthalAngle = cameraAngleY; // Theta (horizontal angle)
+
+            const offsetX = cameraDistance * Math.sin(polarAngle) * Math.cos(azimuthalAngle);
+            const offsetZ = cameraDistance * Math.sin(polarAngle) * Math.sin(azimuthalAngle);
+            const offsetY = cameraDistance * Math.cos(polarAngle);
+
+            // Set camera position relative to player's center (assuming player's origin is at its base)
+            camera.position.set(
+                player.position.x + offsetX,
+                player.position.y + offsetY,
+                player.position.z + offsetZ
+            );
+            // Make the camera look at the player's head level for better perspective
+            camera.lookAt(player.position.x, player.position.y + player.geometry.parameters.height / 2 * 0.8, player.position.z);
+        }
+
+        // --- Core Game Loop ---
+        function update() {
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastUpdateTime) / 1000; // Delta time in seconds
+            lastUpdateTime = currentTime;
+
+            // --- Player Movement ---
+            let moveDirection = new THREE.Vector3();
+            const cameraDirection = new THREE.Vector3();
+            camera.getWorldDirection(cameraDirection); // Get direction camera is facing
+            cameraDirection.y = 0; // Only consider horizontal component
+            cameraDirection.normalize();
+
+            const rightDirection = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
+
+            if (keys.w) moveDirection.add(cameraDirection);
+            if (keys.s) moveDirection.sub(cameraDirection);
+            if (keys.a) moveDirection.sub(rightDirection);
+            if (keys.d) moveDirection.add(rightDirection);
+
+            // Normalize diagonal movement to prevent faster movement
+            if (moveDirection.lengthSq() > 0) {
+                moveDirection.normalize().multiplyScalar(playerSpeed * deltaTime);
+            }
+
+            // Apply gravity
+            playerVelocity.y += gravity * deltaTime;
+
+            // Store proposed next position
+            const proposedPosition = player.position.clone().add(new THREE.Vector3(moveDirection.x, playerVelocity.y * deltaTime, moveDirection.z));
+
+            // --- Collision Detection and Resolution ---
+            let newOnGround = false;
+            const playerHalfWidth = player.geometry.parameters.width / 2;
+            const playerHalfHeight = player.geometry.parameters.height / 2;
+            const playerHalfDepth = player.geometry.parameters.depth / 2;
+
+            // Create player bounding box at proposed position
+            const playerMin = new THREE.Vector3(
+                proposedPosition.x - playerHalfWidth,
+                proposedPosition.y - playerHalfHeight,
+                proposedPosition.z - playerHalfDepth
+            );
+            const playerMax = new THREE.Vector3(
+                proposedPosition.x + playerHalfWidth,
+                proposedPosition.y + playerHalfHeight,
+                proposedPosition.z + playerHalfDepth
+            );
+
+            const playerBBox = new THREE.Box3(playerMin, playerMax);
+
+            // Iterate through platforms for collisions
+            for (const platform of platforms) {
+                const platformBBox = new THREE.Box3().setFromObject(platform);
+
+                // If player is intersecting with the platform
+                if (playerBBox.intersectsBox(platformBBox)) {
+                    // Level transition checks
+                    if (currentLevel === 1 && platform === level1EndPlatform) {
+                        createLevel(2);
+                        return; // Stop current update cycle, new level initiated
+                    } else if (currentLevel === 2 && platform === level2EndPlatform) {
+                        createLevel(3);
+                        return;
+                    } else if (currentLevel === 3 && platform === level3EndPlatform) {
+                        createLevel(4);
+                        return;
+                    } else if (currentLevel === 4 && platform === level4EndPlatform) {
+                        createLevel(5);
+                        return;
+                    } else if (currentLevel === 5 && platform === level5EndPlatform) {
+                        showGameStatus("Game Complete! You've mastered all levels!");
+                        // Optionally reset to level 1 or add a final screen
+                        // For now, player stays on the final platform
+                        return;
+                    }
+
+                    // Determine overlap on each axis
+                    const overlapX = Math.max(0, Math.min(playerMax.x, platformBBox.max.x) - Math.max(playerMin.x, platformBBox.min.x));
+                    const overlapY = Math.max(0, Math.min(playerMax.y, platformBBox.max.y) - Math.max(playerMin.y, platformBBox.min.y));
+                    const overlapZ = Math.max(0, Math.min(playerMax.z, platformBBox.max.z) - Math.max(playerMin.z, platformBBox.min.z));
+
+                    // Resolve collision on the axis with the smallest overlap
+                    if (overlapX < overlapY && overlapX < overlapZ) {
+                        // Resolve X axis
+                        if (proposedPosition.x < platform.position.x) { // Player is to the left of platform
+                            proposedPosition.x -= overlapX;
+                        } else { // Player is to the right
+                            proposedPosition.x += overlapX;
+                        }
+                    } else if (overlapY < overlapX && overlapY < overlapZ) {
+                        // Resolve Y axis (vertical collision)
+                        if (playerVelocity.y < 0) { // Player is falling and hit top of platform
+                            proposedPosition.y = platformBBox.max.y + playerHalfHeight;
+                            playerVelocity.y = 0; // Stop vertical movement
+                            newOnGround = true; // Player is now on the ground
+                        } else if (playerVelocity.y > 0) { // Player is jumping and hit bottom of platform
+                            proposedPosition.y = platformBBox.min.y - playerHalfHeight;
+                            playerVelocity.y = 0; // Stop vertical movement
+                        }
+                    } else {
+                        // Resolve Z axis
+                        if (proposedPosition.z < platform.position.z) { // Player is in front of platform
+                            proposedPosition.z -= overlapZ;
+                        } else { // Player is behind
+                            proposedPosition.z += overlapZ;
+                        }
+                    }
+                }
+            }
+
+            // Update player's position after all collision resolutions
+            player.position.copy(proposedPosition);
+            onGround = newOnGround; // Update global onGround state
+
+            // --- Fall detection and reset ---
+            if (player.position.y < -15) { // If player falls too far
+                createLevel(currentLevel); // Reset to the start of the current level
+                showGameStatus("You fell! Resetting...");
+            } else {
+                // If not falling, hide status after a short delay
+                if (gameStatusDiv.style.display === 'block' &&
+                    gameStatusDiv.innerText !== "Level 2!" &&
+                    gameStatusDiv.innerText !== "Level 3!" &&
+                    gameStatusDiv.innerText !== "Level 4!" &&
+                    gameStatusDiv.innerText !== "Level 5!" &&
+                    gameStatusDiv.innerText !== "Game Complete! You've mastered all levels!") {
+                    // Only hide if it's a "fell" or "mouse locked/unlocked" message
+                    setTimeout(hideGameStatus, 1500); // Hide after 1.5 seconds
+                }
+            }
+
+            // Update camera position
+            updateCameraPosition();
+        }
+
+        // --- UI Functions ---
+        function showGameStatus(message) {
+            gameStatusDiv.innerText = message;
+            gameStatusDiv.style.display = 'block';
+            gameStatusDiv.style.opacity = 1;
+            gameStatusDiv.style.transition = 'opacity 0.3s ease-in-out';
+            // For level messages, make it last a bit longer
+            if (message.includes("Level") || message.includes("Game Complete")) {
+                 setTimeout(() => {
+                     gameStatusDiv.style.opacity = 0;
+                     setTimeout(() => gameStatusDiv.style.display = 'none', 300);
+                 }, 2000); // Show for 2 seconds
+            }
+        }
+
+        function hideGameStatus() {
+            gameStatusDiv.style.display = 'none';
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            update(); // Call update logic
+            renderer.render(scene, camera); // Render the scene
+        }
+
+        // --- Start the game ---
+        window.onload = function () {
+            init(); // Initialize scene
+            animate(); // Start animation loop
+        };
+    </script>
+</body>
+</html>
