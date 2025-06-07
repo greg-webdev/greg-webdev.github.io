@@ -124,7 +124,7 @@
         let playerVelocity = new THREE.Vector3(); // Represents continuous velocity
         const playerSpeed = 28; // Max horizontal speed
         const accelerationRate = 0.1; // How quickly player accelerates to max speed
-        const frictionRate = 0.75; // How quickly player decelerates
+        const frictionRate = 0.5; // How quickly player decelerates (LOWER VALUE = MORE SUDDEN STOP)
         const jumpStrength = 25; // Initial upward velocity on jump
         const gravity = -50; // Units per second squared
         let onGround = false;
@@ -176,7 +176,12 @@
         let level2EndPlatform;
         let level3EndPlatform;
         let level4EndPlatform;
-        let level5EndPlatform; // For "Game Complete" check
+        let level5EndPlatform; 
+        let level6EndPlatform;
+        let level7EndPlatform;
+        let level8EndPlatform;
+        let level9EndPlatform;
+        let level10EndPlatform; // For "Game Complete" check
 
         // Player death state and scattered parts
         let isPlayerDead = false;
@@ -474,13 +479,15 @@
             // Step 3: Create new player body part meshes
             // Head (Yellow) - Now a group of cylinder + hemispheres for rounded edges
             headMesh = new THREE.Group();
-            const headCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.5, 32), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
-            const headTopSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
-            const headBottomSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+            const headCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.5, 32), headMaterial);
+            const headTopSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2), headMaterial);
+            const headBottomSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), headMaterial);
             
-            headCylinder.position.set(0, 0, 0);
-            headTopSphere.position.set(0, 0.25, 0); // Top of cylinder is at y=0.25
-            headBottomSphere.position.set(0, -0.25, 0); // Bottom of cylinder is at y=-0.25
+            // Positions relative to the headMesh group's center (head total height is 1.0, center at y=0)
+            headCylinder.position.set(0, 0, 0); // Cylinder is centered at 0
+            headTopSphere.position.set(0, 0.25, 0); // Top sphere cap sits on top of cylinder
+            headBottomSphere.position.set(0, -0.25, 0); // Bottom sphere cap sits below cylinder
 
             headMesh.add(headCylinder, headTopSphere, headBottomSphere);
             // Ensure all parts of the head group cast shadows
@@ -510,7 +517,7 @@
             });
 
             // Set local positions for new parts relative to the player group
-            headMesh.position.y = 2.0; // Head group's center is at y=2.0
+            headMesh.position.y = 2.0; // Head group's center is at y=2.0 (total player height is 5.25)
             torsoMesh.position.y = 0.5;
             leftArmMesh.position.set(-1.125, 0.5, 0);
             rightArmMesh.position.set(1.125, 0.5, 0);
@@ -562,8 +569,33 @@
                     clearPlatforms();
                     createLevel5Platforms();
                     break;
+                case 6:
+                    showGameStatus("Level 6!");
+                    clearPlatforms();
+                    createLevel6Platforms();
+                    break;
+                case 7:
+                    showGameStatus("Level 7!");
+                    clearPlatforms();
+                    createLevel7Platforms();
+                    break;
+                case 8:
+                    showGameStatus("Level 8!");
+                    clearPlatforms();
+                    createLevel8Platforms();
+                    break;
+                case 9:
+                    showGameStatus("Level 9!");
+                    clearPlatforms();
+                    createLevel9Platforms();
+                    break;
+                case 10:
+                    showGameStatus("Level 10!");
+                    clearPlatforms();
+                    createLevel10Platforms();
+                    break;
                 default:
-                    showGameStatus("Game Complete! You beat all levels!");
+                    showGameStatus("Game Complete! You beat all 10 levels!");
                     break;
             }
         }
@@ -627,6 +659,67 @@
             level5EndPlatform = createPlatform(28, 35, 0, 3, 0.5, 3, 0xFF4500); // OrangeRed, final platform for Level 5
         }
 
+        function createLevel6Platforms() {
+            // Introducing more intricate jumps and varying platform sizes
+            createPlatform(0, 0, 0, 6, 0.5, 6, 0x4CAF50); // Start platform
+            createPlatform(8, 2, 5, 3, 0.5, 3, 0x2196F3); // Blue, slightly higher
+            createPlatform(15, 5, -3, 2, 0.5, 2, 0xFF5722); // Red, higher and smaller
+            createPlatform(20, 8, 8, 4, 0.5, 4, 0x9C27B0); // Purple, a wider jump to a medium platform
+            createPlatform(28, 12, 0, 2.5, 0.5, 2.5, 0x00BCD4); // Cyan, high and small
+            createPlatform(35, 15, -10, 1.5, 0.5, 1.5, 0xFFD700); // Yellow, very high and precise
+            createPlatform(40, 18, 5, 1, 0.5, 1, 0x795548); // Brown, very tiny
+            level6EndPlatform = createPlatform(48, 20, 0, 5, 0.5, 5, 0x66bb6a); // Green end platform
+        }
+
+        function createLevel7Platforms() {
+            // Long jumps over gaps, some platforms appearing lower
+            createPlatform(0, 0, 0, 7, 0.5, 7, 0xADD8E6); // Start
+            createPlatform(15, -2, 0, 4, 0.5, 4, 0x87CEEB); // Below start, requiring a drop and jump
+            createPlatform(25, 2, 8, 3, 0.5, 3, 0x4682B4); // Up and far
+            createPlatform(35, 7, -8, 2.5, 0.5, 2.5, 0x1E90FF); // Higher, longer jump
+            createPlatform(45, 10, 0, 2, 0.5, 2, 0x6A5ACD); // Very long jump
+            createPlatform(52, 13, 10, 1.5, 0.5, 1.5, 0x483D8B); // Small, high and far
+            createPlatform(58, 16, -5, 1, 0.5, 1, 0xBA55D3); // Tiny, very high
+            level7EndPlatform = createPlatform(65, 18, 0, 6, 0.5, 6, 0xF44336); // Red end platform
+        }
+
+        function createLevel8Platforms() {
+            // Floating platforms, very small targets, demanding precision
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0xFFC107); // Start
+            createPlatform(10, 3, 0, 2, 0.5, 2, 0xFF9800); // Small float
+            createPlatform(16, 6, 5, 1.5, 0.5, 1.5, 0xE91E63); // Smaller, higher float
+            createPlatform(20, 9, -5, 1, 0.5, 1, 0x9C27B0); // Very small target
+            createPlatform(24, 12, 0, 0.8, 0.5, 0.8, 0x673AB7); // Tiny, high
+            createPlatform(28, 15, 8, 0.7, 0.5, 0.7, 0x2196F3); // Micro jump
+            createPlatform(30, 18, -8, 0.5, 0.5, 0.5, 0x00BCD4); // Minimal
+            level8EndPlatform = createPlatform(35, 20, 0, 3, 0.5, 3, 0x66bb6a); // Green end platform
+        }
+
+        function createLevel9Platforms() {
+            // Series of vertical and horizontal jumps with minimal resting space
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0x00FFFF); // Start
+            createPlatform(6, 4, 0, 2, 0.5, 2, 0x00BCD4); // Up and short
+            createPlatform(12, 8, 3, 1.5, 0.5, 1.5, 0x009688); // Up and further
+            createPlatform(18, 12, -3, 1, 0.5, 1, 0x4CAF50); // High precision
+            createPlatform(22, 16, 0, 0.8, 0.5, 0.8, 0x8BC34A); // Vertical challenge
+            createPlatform(26, 20, 5, 0.7, 0.5, 0.7, 0xCDDC39); // Very tight jump
+            createPlatform(30, 24, -5, 0.6, 0.5, 0.6, 0xFFEB3B); // Extreme precision
+            level9EndPlatform = createPlatform(35, 28, 0, 4, 0.5, 4, 0xFF4500); // OrangeRed end platform
+        }
+
+        function createLevel10Platforms() {
+            // The ultimate level: a long, difficult series of small, high, and distant platforms
+            createPlatform(0, 0, 0, 4, 0.5, 4, 0xFF00FF); // Magenta start
+            createPlatform(8, 3, 0, 1.2, 0.5, 1.2, 0xFF00FF); // Small jump
+            createPlatform(15, 7, 5, 1, 0.5, 1, 0xFF00FF); // Higher, further
+            createPlatform(20, 12, -5, 0.8, 0.5, 0.8, 0xFF00FF); // Precision needed
+            createPlatform(25, 17, 0, 0.7, 0.5, 0.7, 0xFF00FF); // Very high
+            createPlatform(28, 22, 8, 0.6, 0.5, 0.6, 0xFF00FF); // Tiny, far
+            createPlatform(30, 27, -8, 0.5, 0.5, 0.5, 0xFF00FF); // Extreme jump
+            createPlatform(32, 32, 0, 0.4, 0.5, 0.4, 0xFF00FF); // Final tiny jump
+            level10EndPlatform = createPlatform(38, 35, 0, 5, 0.5, 5, 0xFFFFFF); // White ultimate end platform
+        }
+
 
         function updateCameraPosition() {
             // The player's group's origin is now at its center, so lookAt the player's position directly.
@@ -664,13 +757,36 @@
                         part.rotation.y += part.userData.angularVelocity.y * deltaTime;
                         part.rotation.z += part.userData.angularVelocity.z * deltaTime;
 
-                        // Remove part if it.position.y goes too far below the ground
-                        if (part.position.y < ground.position.y - 10) { 
-                            scene.remove(part);
-                            // Dispose of geometry and material if dynamically created
-                            if (part.geometry) part.geometry.dispose(); 
-                            if (part.material) part.material.dispose(); 
-                            detachedParts.splice(i, 1);
+                        // Collision with the killbrick
+                        const groundSurfaceY = ground.position.y;
+                        
+                        let partBottomY;
+                        // Attempt to get accurate bottom for various geometries
+                        if (part.geometry && part.geometry.boundingBox) {
+                            part.geometry.computeBoundingBox(); // Ensure bounding box is computed
+                            partBottomY = part.position.y + part.geometry.boundingBox.min.y; // World bottom relative to part's local origin
+                        } else if (part.geometry && part.geometry.boundingSphere) {
+                            part.geometry.computeBoundingSphere();
+                            partBottomY = part.position.y - part.geometry.boundingSphere.radius;
+                        } else {
+                            // Fallback for unexpected cases, use a reasonable estimate for small parts
+                            partBottomY = part.position.y - 0.5; // Default half-height for small parts
+                        }
+                        
+                        if (partBottomY <= groundSurfaceY && part.userData.velocity.y < 0) {
+                            // If the part has passed or touched the ground surface and is moving downwards
+                            // Snap position to just above the ground surface.
+                            // The offset from the part's center to its bottom will be `part.position.y - partBottomY`.
+                            part.position.y += (groundSurfaceY - partBottomY) + 0.01; 
+                            part.userData.velocity.y = 0; // Stop vertical movement
+                            part.userData.angularVelocity.set(0, 0, 0); // Stop rotation
+                            // Slightly dampen horizontal movement on impact
+                            part.userData.velocity.x *= 0.7;
+                            part.userData.velocity.z *= 0.7;
+
+                            // If horizontal velocity is very low, stop it completely to prevent endless sliding
+                            if (Math.abs(part.userData.velocity.x) < 0.1) part.userData.velocity.x = 0;
+                            if (Math.abs(part.userData.velocity.z) < 0.1) part.userData.velocity.z = 0;
                         }
                     }
                 }
@@ -785,9 +901,25 @@
                             createLevel(5);
                             return;
                         } else if (currentLevel === 5 && platform === level5EndPlatform) {
-                            showGameStatus("Game Complete! You've mastered all levels!");
+                            createLevel(6); // Transition to Level 6
+                            return;
+                        } else if (currentLevel === 6 && platform === level6EndPlatform) {
+                            createLevel(7); // Transition to Level 7
+                            return;
+                        } else if (currentLevel === 7 && platform === level7EndPlatform) {
+                            createLevel(8); // Transition to Level 8
+                            return;
+                        } else if (currentLevel === 8 && platform === level8EndPlatform) {
+                            createLevel(9); // Transition to Level 9
+                            return;
+                        } else if (currentLevel === 9 && platform === level9EndPlatform) {
+                            createLevel(10); // Transition to Level 10
+                            return;
+                        } else if (currentLevel === 10 && platform === level10EndPlatform) {
+                            showGameStatus("Game Complete! You've mastered all 10 levels!"); // Game completed
                             return;
                         }
+
 
                         // Determine overlap on each axis
                         const overlapX = Math.max(0, Math.min(playerMax.x, platformBBox.max.x) - Math.max(playerMin.x, platformBBox.min.x));
@@ -896,7 +1028,7 @@
             scene.remove(player);
 
             // Re-add individual parts to the scene at their world positions, then apply scattering
-            for (const { part, worldPosition } of partsAndWorldPositions) {
+            for (const { part, worldPosition } of partsAndWorldPositions) { 
                 // Ensure part is no longer a child of the player group/head group before re-adding to scene
                 if (part.parent) { 
                     part.parent.remove(part); 
