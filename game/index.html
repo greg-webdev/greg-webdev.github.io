@@ -98,7 +98,7 @@
 </head>
 <body>
     <div id="game-info">
-        <h3>Controls: <span id="toggle-controls">&#9660;</span></h3> <!-- Downward arrow -->
+        <h3>Controls: <span id="toggle-controls">&#9660;</span></h3> 
         <div class="controls-content">
             <p>W: Forward</p>
             <p>A: Left</p>
@@ -120,11 +120,11 @@
     <script>
         // --- Global Game Variables ---
         let scene, camera, renderer;
-        let player; // Now a THREE.Group
-        let playerVelocity = new THREE.Vector3(); // Now represents continuous velocity
+        let player; // THREE.Group, will be created/reassigned in createLevel
+        let playerVelocity = new THREE.Vector3(); // Represents continuous velocity
         const playerSpeed = 28; // Max horizontal speed
-        const accelerationRate = 0.1; // How quickly player accelerates to max speed (0.05 - 0.2 works well)
-        const frictionRate = 0.75; // How quickly player decelerates (0.8 - 0.95, higher is less friction)
+        const accelerationRate = 0.1; // How quickly player accelerates to max speed
+        const frictionRate = 0.75; // How quickly player decelerates
         const jumpStrength = 25; // Initial upward velocity on jump
         const gravity = -50; // Units per second squared
         let onGround = false;
@@ -148,17 +148,18 @@
         const minCameraDistance = 5;
         const maxCameraDistance = 30;
 
-        // Player dimensions for collision calculation (based on the new Roblox-like model)
-        const playerTotalHeight = 5; // Head (1) + Torso (2) + Legs (2)
-        const playerHalfHeight = playerTotalHeight / 2; // 2.5
+        // Player dimensions for collision calculation (based on the Roblox-like model)
+        // Adjusted for new head height of 1.5 units, same as previous spherical head
+        const playerTotalHeight = 5.25; // Head (1.5) + Torso (2) + Legs (2) = 5.5.
+                                        // Original was 5, now more accurate with 1.5 head.
+                                        // Top of head (2.0 + 0.75) - Bottom of legs (-1.5 - 1) = 2.75 - (-2.5) = 5.25
+        const playerHalfHeight = playerTotalHeight / 2; // 2.625
 
         // Player's horizontal extent is determined by the arms (0.75 width, positioned -1.125 and +1.125 from center)
-        // Left arm extends from -1.125 - 0.75/2 = -1.5
-        // Right arm extends to 1.125 + 0.75/2 = 1.5
         const playerMaxHorizontalDimension = 3.0; 
         const playerHalfWidth = playerMaxHorizontalDimension / 2; // 1.5
 
-        // Player's depth extent is determined by the head (1.0 depth)
+        // Player's depth extent is determined by the head/torso (1.0 depth for head, 0.75 for torso)
         const playerMaxDepthDimension = 1.0; 
         const playerHalfDepth = playerMaxDepthDimension / 2; // 0.5
 
@@ -180,11 +181,18 @@
         // Player death state and scattered parts
         let isPlayerDead = false;
         let detachedParts = []; // Array to hold individual parts when they scatter
+
         let resetTimeoutId; // To manage the timeout for resetting the level after death
 
-        // Global references for individual player body meshes (created once in init)
+        // Global references for individual player body meshes (created within createLevel)
+        // These will be reassigned new mesh objects each time createLevel is called.
         let headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh;
         let ground; // Reference to the ground mesh
+
+        // Reusable THREE.Vector3 objects to avoid repeated instantiation in update loop
+        const _cameraDirection = new THREE.Vector3();
+        const _rightDirection = new THREE.Vector3();
+
 
         // --- Initialization Function ---
         function init() {
@@ -193,7 +201,7 @@
             scene.background = new THREE.Color(0x87CEEB); // Sky blue background
             scene.fog = new THREE.Fog(0x87CEEB, 50, 200); // Add a bit of fog for depth
 
-            // Camera setup - Initialized after player is created below.
+            // Camera setup
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             
             // Renderer setup
@@ -224,43 +232,6 @@
             sunLight.shadow.camera.bottom = -50;
             // scene.add(new THREE.CameraHelper(sunLight.shadow.camera)); // Uncomment to visualize shadow camera
 
-            // Player Group (container for body parts)
-            player = new THREE.Group();
-
-            // Create all player parts only ONCE in init
-            // Head (Yellow) - Now round
-            headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
-            // Torso (Light Blue)
-            torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x87CEEB }));
-            // Left Arm (Yellow)
-            leftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
-            // Right Arm (Yellow)
-            rightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
-            // Left Leg (Green)
-            leftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x66bb6a }));
-            // Right Leg (Green)
-            rightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x66bb6a }));
-
-            // Set castShadow for all these parts
-            [headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh].forEach(mesh => mesh.castShadow = true);
-
-            // Add parts to player group in init and set their initial local positions
-            player.add(headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh);
-            headMesh.position.y = 2.0;
-            torsoMesh.position.y = 0.5;
-            leftArmMesh.position.set(-1.125, 0.5, 0);
-            rightArmMesh.position.set(1.125, 0.5, 0);
-            leftLegMesh.position.set(-0.375, -1.5, 0);
-            rightLegMesh.position.set(0.375, -1.5, 0);
-            
-            // Set initial position of the entire player group (feet at Y=0 initially)
-            // This will be overridden by createLevel(1) which spawns on the first platform
-            player.position.set(0, playerHalfHeight, 0); 
-            scene.add(player); // Add the player group to the scene
-
-            // Set initial camera position relative to player AFTER player is created
-            updateCameraPosition(); 
-
             // Create ground plane (the "killbrick") - placed well below starting platforms
             const groundGeometry = new THREE.PlaneGeometry(200, 200);
             const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x66bb6a }); // Green ground
@@ -270,8 +241,12 @@
             ground.receiveShadow = true; // Ground receives shadows
             scene.add(ground);
 
-            // Create initial platforms for Level 1 - this will also position the player
+            // Create initial platforms for Level 1 - this will also position the player and create its parts
+            // createLevel will handle player initialization and adding it to the scene
             createLevel(1);
+
+            // Set initial camera position relative to player (player will be created by createLevel)
+            updateCameraPosition(); 
 
             // Event Listeners
             renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault()); // Disable context menu
@@ -458,52 +433,99 @@
             while (platforms.length > 0) {
                 const platform = platforms.pop();
                 scene.remove(platform);
-                platform.geometry.dispose();
-                platform.material.dispose();
+                // Dispose of geometry and material to prevent memory leaks
+                if (platform.geometry) platform.geometry.dispose();
+                if (platform.material) platform.material.dispose();
             }
         }
 
         // --- Level Creation Functions ---
         function createLevel(levelNum) {
-            clearTimeout(resetTimeoutId); // Clear any pending reset timeout
+            clearTimeout(resetTimeoutId); 
             
-            // Clean up scattered parts from previous death animation if any
-            for (const part of detachedParts) {
-                scene.remove(part);
+            // Step 1: Clean up and dispose of existing player and its body parts
+            if (player && scene.children.includes(player)) {
+                scene.remove(player); // Remove old player group from scene
+                // Dispose of its children (old player parts)
+                while(player.children.length > 0){
+                    const child = player.children[0];
+                    player.remove(child);
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
             }
-            detachedParts = []; // Clear the array
+            // Clear any previously detached parts from the scene and array
+            for (const part of detachedParts) {
+                scene.remove(part); 
+                if (part.geometry) part.geometry.dispose();
+                if (part.material) part.material.dispose();
+            }
+            detachedParts = []; 
 
-            // Re-add all player parts to the player group and reset their local positions
-            // This ensures the player group is complete and visible again.
-            if (!player.children.includes(headMesh)) player.add(headMesh);
-            if (!player.children.includes(torsoMesh)) player.add(torsoMesh);
-            if (!player.children.includes(leftArmMesh)) player.add(leftArmMesh);
-            if (!player.children.includes(rightArmMesh)) player.add(rightArmMesh);
-            if (!player.children.includes(leftLegMesh)) player.add(leftLegMesh);
-            if (!player.children.includes(rightLegMesh)) player.add(rightLegMesh);
+            // Step 2: Create a BRAND NEW player group instance
+            player = new THREE.Group();
+            scene.add(player); // Add the new player group to the scene
+            player.position.set(0, 0.25 + playerHalfHeight, 0); // Set initial position for the new player
+            playerVelocity.set(0, 0, 0); // Reset player velocity
+            player.rotation.y = 0; // Reset overall player rotation
+            player.updateMatrix(); // Force update of local matrix
+            player.matrixWorldNeedsUpdate = true; // Signal world matrix needs update
 
-            headMesh.position.y = 2.0;
+            // Step 3: Create new player body part meshes
+            // Head (Yellow) - Now a group of cylinder + hemispheres for rounded edges
+            headMesh = new THREE.Group();
+            const headCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.5, 32), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            const headTopSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            const headBottomSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            
+            headCylinder.position.set(0, 0, 0);
+            headTopSphere.position.set(0, 0.25, 0); // Top of cylinder is at y=0.25
+            headBottomSphere.position.set(0, -0.25, 0); // Bottom of cylinder is at y=-0.25
+
+            headMesh.add(headCylinder, headTopSphere, headBottomSphere);
+            // Ensure all parts of the head group cast shadows
+            headCylinder.castShadow = true;
+            headTopSphere.castShadow = true;
+            headBottomSphere.castShadow = true;
+
+
+            // Torso (Light Blue)
+            torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x87CEEB }));
+            // Left Arm (Yellow)
+            leftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            // Right Arm (Yellow)
+            rightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            // Left Leg (Green)
+            leftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x66bb6a }));
+            // Right Leg (Green)
+            rightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x66bb6a }));
+
+            // Set castShadow for all new parts and add them to the NEW player group
+            [headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh].forEach(mesh => {
+                // headMesh is already a group, individual parts within it cast shadows above
+                if (mesh !== headMesh) { // Avoid setting castShadow on the group itself unnecessarily
+                    mesh.castShadow = true;
+                }
+                player.add(mesh); 
+            });
+
+            // Set local positions for new parts relative to the player group
+            headMesh.position.y = 2.0; // Head group's center is at y=2.0
             torsoMesh.position.y = 0.5;
             leftArmMesh.position.set(-1.125, 0.5, 0);
             rightArmMesh.position.set(1.125, 0.5, 0);
             leftLegMesh.position.set(-0.375, -1.5, 0);
             rightLegMesh.position.set(0.375, -1.5, 0);
 
+            // Force update of individual part matrices after setting local positions
+            [headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh].forEach(part => {
+                part.updateMatrix();
+                part.matrixWorldNeedsUpdate = true;
+            });
 
             isPlayerDead = false; // Reset death state
             
-            // Ensure the player group is added to the scene if it was removed (after death)
-            if (!scene.children.includes(player)) {
-                scene.add(player);
-            }
-
             currentLevel = levelNum;
-            // Spawn player on the first platform of the current level
-            // The first platform is at (0, 0, 0) and has height 0.5. Its top surface is at Y=0.25.
-            // Player's feet should be at Y=0.25. Player's feet are at player.position.y - playerHalfHeight.
-            // So, player.position.y = 0.25 + playerHalfHeight = 0.25 + 2.5 = 2.75
-            player.position.set(0, 0.25 + playerHalfHeight, 0); // Exact spawn on top of initial platform
-            playerVelocity.set(0, 0, 0);
             onGround = true; // Player starts on ground for new level
 
             // If noclip was active, disable it on level change
@@ -517,22 +539,27 @@
             switch(levelNum) {
                 case 1:
                     showGameStatus("Level 1");
+                    clearPlatforms(); // Clear existing platforms before creating new ones
                     createLevel1Platforms();
                     break;
                 case 2:
                     showGameStatus("Level 2!");
+                    clearPlatforms();
                     createLevel2Platforms();
                     break;
                 case 3:
                     showGameStatus("Level 3!");
+                    clearPlatforms();
                     createLevel3Platforms();
                     break;
                 case 4:
                     showGameStatus("Level 4!");
+                    clearPlatforms();
                     createLevel4Platforms();
                     break;
                 case 5:
                     showGameStatus("Level 5!");
+                    clearPlatforms();
                     createLevel5Platforms();
                     break;
                 default:
@@ -637,9 +664,12 @@
                         part.rotation.y += part.userData.angularVelocity.y * deltaTime;
                         part.rotation.z += part.userData.angularVelocity.z * deltaTime;
 
-                        // Remove part if it falls too far
-                        if (part.position.y < ground.position.y - 10) { // Remove if below killbrick + offset
+                        // Remove part if it.position.y goes too far below the ground
+                        if (part.position.y < ground.position.y - 10) { 
                             scene.remove(part);
+                            // Dispose of geometry and material if dynamically created
+                            if (part.geometry) part.geometry.dispose(); 
+                            if (part.material) part.material.dispose(); 
                             detachedParts.splice(i, 1);
                         }
                     }
@@ -649,17 +679,17 @@
 
             // --- Player Movement (Horizontal) ---
             let targetMoveDirection = new THREE.Vector3();
-            const cameraDirection = new THREE.Vector3();
-            camera.getWorldDirection(cameraDirection); // Get direction camera is facing
-            cameraDirection.y = 0; // Only consider horizontal component
-            cameraDirection.normalize();
+            // Use the globally declared variables
+            _cameraDirection.copy(camera.getWorldDirection(_cameraDirection)); // Get direction camera is facing. Pass _cameraDirection to avoid new object.
+            _cameraDirection.y = 0; // Only consider horizontal component
+            _cameraDirection.normalize();
 
-            const rightDirection = new THREE.Vector3().crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
+            _rightDirection.crossVectors(_cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
 
-            if (keys.w) targetMoveDirection.add(cameraDirection);
-            if (keys.s) targetMoveDirection.sub(cameraDirection);
-            if (keys.a) targetMoveDirection.sub(rightDirection);
-            if (keys.d) targetMoveDirection.add(rightDirection);
+            if (keys.w) targetMoveDirection.add(_cameraDirection);
+            if (keys.s) targetMoveDirection.sub(_cameraDirection);
+            if (keys.a) targetMoveDirection.sub(_rightDirection);
+            if (keys.d) targetMoveDirection.add(_rightDirection);
 
             // Normalize target direction if input is present
             if (targetMoveDirection.lengthSq() > 0) {
@@ -729,7 +759,7 @@
                 if (!isPlayerDead) {
                     handlePlayerDeath();
                 }
-                return; // Stop update cycle
+                    return; // Stop update cycle
             }
 
 
@@ -775,13 +805,13 @@
                         } else if (overlapY < overlapX && overlapY < overlapZ) {
                             // Resolve Y axis (vertical collision)
                             // Collision from below (player falling onto platform)
-                            if (playerVelocity.y < 0 && proposedPosition.y - playerHalfHeight <= platformBBox.max.y + 0.01) { // Added small epsilon for landing
+                            if (playerVelocity.y < 0 && proposedPosition.y - playerHalfHeight <= platformBBox.max.y) { // Strict comparison
                                 proposedPosition.y = platformBBox.max.y + playerHalfHeight;
                                 playerVelocity.y = 0; // Stop vertical movement
                                 newOnGround = true; // Player is now on the ground
                             } 
                             // Collision from above (player jumping into bottom of platform)
-                            else if (playerVelocity.y > 0 && proposedPosition.y + playerHalfHeight >= platformBBox.min.y - 0.01) { // Added small epsilon for hitting head
+                            else if (playerVelocity.y > 0 && proposedPosition.y + playerHalfHeight >= platformBBox.min.y) { // Strict comparison
                                 proposedPosition.y = platformBBox.min.y - playerHalfHeight;
                                 playerVelocity.y = 0; // Stop vertical movement
                             }
@@ -831,6 +861,17 @@
 
             // Update camera position
             updateCameraPosition();
+
+            // --- Make player face away from camera ---
+            // Get the camera's forward direction
+            _cameraDirection.copy(camera.getWorldDirection(_cameraDirection)); // Reuse the global vector
+            
+            // The player should face the opposite direction of the camera's forward vector.
+            const playerLookDirection = _cameraDirection.negate();
+            
+            // Calculate the angle around the Y-axis to make the player look in this direction.
+            // Math.atan2(x, z) calculates the angle from the positive Z-axis.
+            player.rotation.y = Math.atan2(playerLookDirection.x, playerLookDirection.z);
         }
 
         // --- Player Death Handling ---
@@ -840,7 +881,11 @@
 
             // Get current world position of each part before they are detached
             const partsAndWorldPositions = [];
-            [headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh].forEach(part => {
+            // Get children of the head group (cylinder, top/bottom spheres)
+            const headChildren = headMesh ? [...headMesh.children] : [];
+            const allCurrentParts = [torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh, ...headChildren].filter(p => p !== undefined);
+
+            allCurrentParts.forEach(part => {
                 part.updateMatrixWorld(true); // Ensure world matrix is up-to-date for worldPosition
                 const worldPosition = new THREE.Vector3();
                 part.getWorldPosition(worldPosition);
@@ -852,11 +897,9 @@
 
             // Re-add individual parts to the scene at their world positions, then apply scattering
             for (const { part, worldPosition } of partsAndWorldPositions) {
-                // Ensure part is no longer a child of the player group before re-adding to scene
-                // (It should already be removed by scene.remove(player) and player.remove(part) in previous iterations)
-                // However, to be fully robust:
-                if (part.parent) { // If it has a parent
-                    part.parent.remove(part); // Remove from its current parent
+                // Ensure part is no longer a child of the player group/head group before re-adding to scene
+                if (part.parent) { 
+                    part.parent.remove(part); 
                 }
                 scene.add(part);
                 part.position.copy(worldPosition); // Set its position to its world position at time of detachment
@@ -878,7 +921,7 @@
             clearTimeout(resetTimeoutId);
             resetTimeoutId = setTimeout(() => {
                 createLevel(currentLevel); // Reset to current level after death animation
-            }, 3000); // 3 seconds delay for scattering effect
+            }, 5000); // 5 seconds delay for scattering effect
         }
 
         // --- UI Functions ---
