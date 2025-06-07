@@ -775,13 +775,13 @@
                         } else if (overlapY < overlapX && overlapY < overlapZ) {
                             // Resolve Y axis (vertical collision)
                             // Collision from below (player falling onto platform)
-                            if (playerVelocity.y < 0 && proposedPosition.y - playerHalfHeight < platformBBox.max.y && player.position.y - playerHalfHeight >= platformBBox.max.y) {
+                            if (playerVelocity.y < 0 && proposedPosition.y - playerHalfHeight <= platformBBox.max.y + 0.01) { // Added small epsilon for landing
                                 proposedPosition.y = platformBBox.max.y + playerHalfHeight;
                                 playerVelocity.y = 0; // Stop vertical movement
                                 newOnGround = true; // Player is now on the ground
                             } 
                             // Collision from above (player jumping into bottom of platform)
-                            else if (playerVelocity.y > 0 && proposedPosition.y + playerHalfHeight > platformBBox.min.y && player.position.y + playerHalfHeight <= platformBBox.min.y) {
+                            else if (playerVelocity.y > 0 && proposedPosition.y + playerHalfHeight >= platformBBox.min.y - 0.01) { // Added small epsilon for hitting head
                                 proposedPosition.y = platformBBox.min.y - playerHalfHeight;
                                 playerVelocity.y = 0; // Stop vertical movement
                             }
@@ -800,9 +800,31 @@
             // Update player's position after all collision resolutions
             player.position.copy(proposedPosition);
             
-            // Only update onGround if not in noclip mode
+            // --- Additional check to ensure player is on ground if very close to a platform's surface ---
+            // This is crucial for initial spawn and preventing minor slips.
             if (!noclipEnabled) {
-                onGround = newOnGround; 
+                let foundGroundNearBy = false;
+                for (const platform of platforms) {
+                    const platformBBox = new THREE.Box3().setFromObject(platform);
+                    const playerBottomY = player.position.y - playerHalfHeight;
+                    const platformTopY = platformBBox.max.y;
+
+                    // Check if player's feet are within a small vertical tolerance of a platform's top
+                    // AND there's horizontal overlap.
+                    if (Math.abs(playerBottomY - platformTopY) < 0.1 && // Within a small tolerance vertically
+                        player.position.x + playerHalfWidth > platformBBox.min.x &&
+                        player.position.x - playerHalfWidth < platformBBox.max.x &&
+                        player.position.z + playerHalfDepth > platformBBox.min.z &&
+                        player.position.z - playerHalfDepth < platformBBox.max.z)
+                    {
+                        // If found, snap to ground and reset vertical velocity
+                        player.position.y = platformTopY + playerHalfHeight;
+                        playerVelocity.y = 0;
+                        foundGroundNearBy = true;
+                        break; // Found ground, no need to check other platforms
+                    }
+                }
+                onGround = foundGroundNearBy; // Update onGround status based on this check
             } else {
                 onGround = false; // In noclip, player is never on ground
             }
