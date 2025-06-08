@@ -3,134 +3,1090 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Static Slideshow</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>3D Parkour Game</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light background */
-            display: flex;
-            flex-direction: column; /* Stack elements vertically */
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 10px; /* Reduced padding */
-            box-sizing: border-box; /* Include padding in element's total width and height */
-            /* Custom cursor: a smaller black dot */
-            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="3" height="3" viewBox="0 0 6 6"><circle cx="3" cy="3" r="3" fill="black"/></svg>') 3 3, auto;
-        }
-        .slideshow-area {
-            width: 100%; /* Take full width */
-            max-width: 600px; /* Reduced max-width */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .slideshow-container {
-            width: 100%; /* Take full width of its parent (.slideshow-area) */
-            margin-bottom: 10px; /* Reduced margin */
-            background-color: #ffffff;
-            padding: 15px; /* Reduced padding */
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow-y: auto; /* Enable vertical scrolling for content */
-            max-height: 70vh; /* Reduced max-height */
-        }
-
-        .slide-item {
-            text-align: center;
-            margin-bottom: 20px; /* Reduced space between slides */
-            padding-bottom: 15px; /* Reduced padding at the bottom of each item */
-            border-bottom: 1px solid #eee; /* Separator line */
-        }
-
-        .slide-item:last-child {
-            margin-bottom: 0;
-            border-bottom: none;
-        }
-
-        .slide-item img, .slide-item video {
-            width: 100%;
-            height: auto;
-            max-height: 300px; /* Reduced max-height for media */
-            object-fit: contain; /* Use contain to show full image/video without cropping */
+        body { margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; background-color: #e0f2f7; /* Lighter sky blue */ }
+        canvas { display: block; }
+        #game-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: #333; /* Darker text for readability */
+            background-color: rgba(255, 255, 255, 0.7); /* Slightly transparent white */
+            padding: 10px;
             border-radius: 8px;
-            margin-bottom: 8px; /* Reduced space between media and caption */
+            z-index: 100;
+            font-size: 14px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* More pronounced shadow */
+            user-select: none; /* Prevent text selection */
+            transition: all 0.3s ease-in-out; /* Smooth transition for sizing */
         }
-
-        .slide-item .caption {
-            color: #333;
-            font-size: 1.1rem; /* Slightly smaller font size */
-            padding: 5px 10px; /* Reduced padding */
+        #game-info.collapsed {
+            padding-bottom: 0;
+            overflow: hidden;
+            max-height: 40px; /* Adjust based on initial height of heading + arrow */
+            box-shadow: none; /* Remove shadow when collapsed for cleaner look */
+        }
+        #game-info .controls-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            max-height: 200px; /* A value larger than the max height of content */
+            opacity: 1;
+        }
+        #game-info.collapsed .controls-content {
+            max-height: 0;
+            opacity: 0;
+        }
+        #toggle-controls {
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 1em;
+            display: inline-block;
+            transition: transform 0.3s ease-in-out;
+        }
+        #game-info.collapsed #toggle-controls {
+            transform: rotate(-90deg); /* Rotate arrow when collapsed */
+        }
+        #game-status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 12px;
+            font-size: 2.5em; /* Larger font */
+            font-weight: bold;
+            display: none; /* Hidden by default */
             text-align: center;
+            z-index: 1000;
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.7); /* Brighter glow */
+            border: 3px solid #ffcc00; /* Gold border */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Text shadow for pop */
         }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .slideshow-container {
-                max-width: 95%; /* Use more width on smaller screens */
-            }
-            .slide-item .caption {
-                font-size: 0.95rem; /* Smaller text on small screens */
-            }
+        #hack-input-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 5px 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+        }
+        #hack-input-container input {
+            background: none;
+            border: none;
+            outline: none;
+            color: #333;
+            font-size: 14px;
+            width: 80px;
+        }
+        #hack-status {
+            margin-left: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
         }
     </style>
 </head>
 <body>
-
-    <div class="slideshow-area" id="slideshowArea">
-        <h1 class="text-xl font-bold text-gray-800 mb-3">Gregory's Photo & Video Album of Projects</h1>
-        <div class="slideshow-container">
-            <div class="slide-item">
-                <img src="picture1.jpg" alt="Picture 1">
-                <div class="caption">Bunch of speakers.</div>
-            </div>
-
-            <div class="slide-item">
-                <video controls loop muted autoplay>
-                    <source src="video1.mp4" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-                <div class="caption">Mist generators.</div>
-            </div>
-
-            <div class="slide-item">
-                <video controls loop muted autoplay>
-                    <source src="video2.mp4" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-                <div class="caption">(supposed to fly)</div>
-            </div>
-
-
-            <div class="slide-item">
-                <img src="picture2.jpg" alt="Picture 2">
-                <div class="caption">City skyline at night.</div>
-            </div>
-
-            <div class="slide-item">
-                <img src="picture3.jpg" alt="Picture 3">
-                <div class="caption">A fan-powered car.</div>
-            </div>
-
-            <div class="slide-item">
-                <img src="picture4.jpg" alt="Picture 4">
-                <div class="caption">Hard at work!</div>
-            </div>
-
-            <div class="slide-item">
-                <img src="picture5.jpg" alt="Picture 5">
-                <div class="caption">I built an electric skateboard.</div>
-            </div>
-
-            <div class="slide-item">
-                <img src="picture6.jpg" alt="Picture 6">
-                <div class="caption">Me on the "electric skateboard".</div>
-            </div>
+    <div id="game-info">
+        <h3>Controls: <span id="toggle-controls">&#9660;</span></h3> 
+        <div class="controls-content">
+            <p>W: Forward</p>
+            <p>A: Left</p>
+            <p>S: Backward</p>
+            <p>D: Right</p>
+            <p>Space: Jump</p>
+            <p>Scroll Wheel: Zoom Camera</p>
+            <p>Right Click + Drag: Rotate View (when mouse not locked)</p>
+            <p>Click Canvas: Lock Mouse for First-Person View</p>
+            <p>ESC: Unlock Mouse</p>
         </div>
     </div>
+    <div id="hack-input-container">
+        <input type="text" id="hack-textbox" placeholder="Enter command...">
+        <span id="hack-status">Noclip: OFF</span>
+    </div>
+    <div id="game-status"></div>
 
+    <script>
+        // --- Global Game Variables ---
+        let scene, camera, renderer;
+        let player; // THREE.Group, will be created/reassigned in createLevel
+        let playerVelocity = new THREE.Vector3(); // Represents continuous velocity
+        const playerSpeed = 28; // Max horizontal speed
+        const accelerationRate = 0.1; // How quickly player accelerates to max speed
+        const frictionRate = 0.5; // How quickly player decelerates (LOWER VALUE = MORE SUDDEN STOP)
+        const jumpStrength = 25; // Initial upward velocity on jump
+        const gravity = -50; // Units per second squared
+        let onGround = false;
+        let lastUpdateTime = performance.now(); // Use performance.now() for better accuracy
+
+        const platforms = []; // Array to store all platforms
+        let currentLevel = 1; // Current game level
+
+        // Input states
+        let keys = {
+            w: false, a: false, s: false, d: false, space: false, shift: false
+        };
+
+        // Camera control variables
+        let isRightClickDown = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+        let cameraDistance = 15; // Initial distance from player
+        let cameraAngleX = Math.PI / 6; // Initial vertical angle (30 degrees)
+        let cameraAngleY = -Math.PI / 4; // Initial horizontal angle (-45 degrees)
+        const minCameraDistance = 5;
+        const maxCameraDistance = 30;
+
+        // Player dimensions for collision calculation (based on the Roblox-like model)
+        // Adjusted for new head height of 1.5 units, same as previous spherical head
+        const playerTotalHeight = 5.25; // Head (1.5) + Torso (2) + Legs (2) = 5.5.
+                                        // Original was 5, now more accurate with 1.5 head.
+                                        // Top of head (2.0 + 0.75) - Bottom of legs (-1.5 - 1) = 2.75 - (-2.5) = 5.25
+        const playerHalfHeight = playerTotalHeight / 2; // 2.625
+
+        // Player's horizontal extent is determined by the arms (0.75 width, positioned -1.125 and +1.125 from center)
+        const playerMaxHorizontalDimension = 3.0; 
+        const playerHalfWidth = playerMaxHorizontalDimension / 2; // 1.5
+
+        // Player's depth extent is determined by the head/torso (1.0 depth for head, 0.75 for torso)
+        const playerMaxDepthDimension = 1.0; 
+        const playerHalfDepth = playerMaxDepthDimension / 2; // 0.5
+
+        // Game UI elements
+        const gameStatusDiv = document.getElementById('game-status');
+        const gameInfoDiv = document.getElementById('game-info');
+        const toggleControlsBtn = document.getElementById('toggle-controls');
+        const hackTextbox = document.getElementById('hack-textbox');
+        const hackStatusSpan = document.getElementById('hack-status');
+        let noclipEnabled = false; // New variable for noclip mode
+
+        // --- Level End Platforms ---
+        let level1EndPlatform;
+        let level2EndPlatform;
+        let level3EndPlatform;
+        let level4EndPlatform;
+        let level5EndPlatform; 
+        let level6EndPlatform;
+        let level7EndPlatform;
+        let level8EndPlatform;
+        let level9EndPlatform;
+        let level10EndPlatform; // For "Game Complete" check
+
+        // Player death state and scattered parts
+        let isPlayerDead = false;
+        let detachedParts = []; // Array to hold individual parts when they scatter
+
+        let resetTimeoutId; // To manage the timeout for resetting the level after death
+
+        // Global references for individual player body meshes (created within createLevel)
+        // These will be reassigned new mesh objects each time createLevel is called.
+        let headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh;
+        let ground; // Reference to the ground mesh
+
+        // Reusable THREE.Vector3 objects to avoid repeated instantiation in update loop
+        const _cameraDirection = new THREE.Vector3();
+        const _rightDirection = new THREE.Vector3();
+
+
+        // --- Initialization Function ---
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+            scene.fog = new THREE.Fog(0x87CEEB, 50, 200); // Add a bit of fog for depth
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio); // High DPI support
+            renderer.shadowMap.enabled = true; // Enable shadow maps
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x606060); // Softer ambient light
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1); // Main light source (sun)
+            sunLight.position.set(20, 50, 30); // Position the sun
+            sunLight.castShadow = true; // Make it cast shadows
+            scene.add(sunLight);
+
+            // Configure shadow camera for directional light
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 0.5;
+            sunLight.shadow.camera.far = 150;
+            sunLight.shadow.camera.left = -50;
+            sunLight.shadow.camera.right = 50;
+            sunLight.shadow.camera.top = 50;
+            sunLight.shadow.camera.bottom = -50;
+            // scene.add(new THREE.CameraHelper(sunLight.shadow.camera)); // Uncomment to visualize shadow camera
+
+            // Create ground plane (the "killbrick") - placed well below starting platforms
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x66bb6a }); // Green ground
+            ground = new THREE.Mesh(groundGeometry, groundMaterial);
+            ground.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+            ground.position.y = -50; // Set killbrick ground much lower
+            ground.receiveShadow = true; // Ground receives shadows
+            scene.add(ground);
+
+            // Create initial platforms for Level 1 - this will also position the player and create its parts
+            // createLevel will handle player initialization and adding it to the scene
+            createLevel(1);
+
+            // Set initial camera position relative to player (player will be created by createLevel)
+            updateCameraPosition(); 
+
+            // Event Listeners
+            renderer.domElement.addEventListener('contextmenu', (event) => event.preventDefault()); // Disable context menu
+            renderer.domElement.addEventListener('wheel', onMouseWheel);
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            window.addEventListener('resize', onWindowResize);
+
+            // Toggle controls menu visibility
+            toggleControlsBtn.addEventListener('click', () => {
+                gameInfoDiv.classList.toggle('collapsed');
+            });
+
+            // Hack textbox logic
+            hackTextbox.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    const command = hackTextbox.value.toLowerCase().trim();
+                    if (command === 'hack') {
+                        noclipEnabled = !noclipEnabled; // Toggle noclip state
+                        hackStatusSpan.style.color = noclipEnabled ? '#28a745' : '#dc3545'; // Green for ON, Red for OFF
+                        hackStatusSpan.innerText = `Noclip: ${noclipEnabled ? 'ON' : 'OFF'}`;
+                        showGameStatus(noclipEnabled ? "Noclip Enabled!" : "Noclip Disabled!");
+                        hackTextbox.value = ''; // Clear textbox
+                        playerVelocity.y = 0; // Reset vertical velocity when toggling noclip
+                        onGround = !noclipEnabled; // If noclip is enabled, player is not on ground; if disabled, assume can land
+                    } else {
+                        showGameStatus("Unknown command.");
+                        hackTextbox.value = '';
+                    }
+                }
+            });
+
+
+            // --- Pointer Lock API Setup ---
+            // Request pointer lock when canvas is clicked
+            renderer.domElement.addEventListener('click', () => {
+                renderer.domElement.requestPointerLock();
+            });
+
+            // Listen for pointer lock changes
+            document.addEventListener('pointerlockchange', pointerLockChange, false);
+            document.addEventListener('mozpointerlockchange', pointerLockChange, false); // For Firefox
+            document.addEventListener('webkitpointerlockchange', pointerLockChange, false); // For Webkit
+        }
+
+        // --- Event Handlers ---
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onKeyDown(event) {
+            // Prevent game controls from activating when typing in the textbox
+            if (document.activeElement === hackTextbox) {
+                return;
+            }
+
+            switch (event.key.toLowerCase()) {
+                case 'w': keys.w = true; break;
+                case 'a': keys.a = true; break;
+                case 's': keys.s = true; break;
+                case 'd': keys.d = true; break;
+                case ' ': // Spacebar
+                    if (!noclipEnabled && onGround) { // Only jump if not in noclip and on ground
+                        playerVelocity.y = jumpStrength;
+                        onGround = false; // Player is no longer on the ground once jump initiated
+                    }
+                    keys.space = true;
+                    break;
+                case 'shift': keys.shift = true; break; // For noclip down
+            }
+        }
+
+        function onKeyUp(event) {
+            // Prevent game controls from activating when typing in the textbox
+            if (document.activeElement === hackTextbox) {
+                return;
+            }
+
+            switch (event.key.toLowerCase()) {
+                case 'w': keys.w = false; break;
+                case 'a': keys.a = false; break;
+                case 's': keys.s = false; break;
+                case 'd': keys.d = false; break;
+                case ' ': keys.space = false; break;
+                case 'shift': keys.shift = false;
+                    // Reset vertical velocity when shift/space is released in noclip
+                    if (noclipEnabled) playerVelocity.y = 0;
+                    break;
+            }
+        }
+
+        function onMouseWheel(event) {
+            // Only zoom if mouse is NOT locked to avoid conflicting with potential first-person camera control schemes
+            if (document.pointerLockElement !== renderer.domElement) {
+                cameraDistance += event.deltaY * 0.05; // Adjust zoom sensitivity
+                cameraDistance = Math.max(minCameraDistance, Math.min(maxCameraDistance, cameraDistance));
+                updateCameraPosition();
+            }
+        }
+
+        function onMouseDown(event) {
+            if (event.button === 2 && document.pointerLockElement !== renderer.domElement) { // Right mouse button, only if not pointer locked
+                isRightClickDown = true;
+                previousMouseX = event.clientX;
+                previousMouseY = event.clientY;
+            }
+        }
+
+        function onMouseUp(event) {
+            if (event.button === 2) { // Right mouse button
+                isRightClickDown = false;
+            }
+        }
+
+        function onMouseMove(event) {
+            const isPointerLocked = document.pointerLockElement === renderer.domElement;
+
+            let deltaX = 0;
+            let deltaY = 0;
+
+            if (isPointerLocked) {
+                // If pointer is locked, use movementX/Y for camera rotation
+                deltaX = event.movementX;
+                deltaY = event.movementY;
+            } else if (isRightClickDown) {
+                // If pointer is not locked, only rotate if right mouse button is down
+                deltaX = event.clientX - previousMouseX;
+                deltaY = event.clientY - previousMouseY;
+            } else {
+                // If not locked and not right-clicking, no camera movement
+                return;
+            }
+
+            // Apply rotation based on deltas
+            cameraAngleY += deltaX * 0.007; // Horizontal rotation sensitivity
+            cameraAngleX -= deltaY * 0.007; // Vertical rotation sensitivity (non-inverted)
+
+            // Clamp vertical angle to prevent flipping
+            // cameraAngleX is the polar angle from the positive Y-axis.
+            // 0.1 radians ensures it's not perfectly straight up (avoids singularity).
+            // Math.PI / 2 - 0.1 ensures it doesn't go below the horizontal plane (prevents camera from going under character).
+            cameraAngleX = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleX)); 
+
+            // Only update previousMouseX/Y if not pointer locked,
+            // as movementX/Y are relative deltas and previous coordinates are not needed for calculation
+            if (!isPointerLocked) {
+                previousMouseX = event.clientX;
+                previousMouseY = event.clientY;
+            }
+
+            updateCameraPosition();
+        }
+
+        function pointerLockChange() {
+            if (document.pointerLockElement === renderer.domElement) {
+                // Pointer was just locked
+                showGameStatus("Mouse Locked! (Press ESC to unlock)");
+                setTimeout(hideGameStatus, 2000); // Hide message after 2 seconds
+            } else {
+                // Pointer was just unlocked
+                showGameStatus("Mouse Unlocked! (Click canvas to lock)");
+                isRightClickDown = false; // Ensure right click state is reset
+                setTimeout(hideGameStatus, 2000); // Hide message after 2 seconds
+            }
+        }
+
+
+        // --- Game Logic Functions ---
+        function createPlatform(x, y, z, width, height, depth, color) {
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshLambertMaterial({ color: color });
+            const platform = new THREE.Mesh(geometry, material);
+            platform.position.set(x, y + height / 2, z); // Adjust y to be centered at given y
+            platform.receiveShadow = true; // Platforms receive shadows
+            platform.castShadow = true; // Platforms can cast shadows (if higher up)
+            scene.add(platform);
+            platforms.push(platform);
+            return platform; // Return the created platform for specific checks (like end platform)
+        }
+
+        // Function to clear all existing platforms from the scene
+        function clearPlatforms() {
+            while (platforms.length > 0) {
+                const platform = platforms.pop();
+                scene.remove(platform);
+                // Dispose of geometry and material to prevent memory leaks
+                if (platform.geometry) platform.geometry.dispose();
+                if (platform.material) platform.material.dispose();
+            }
+        }
+
+        // --- Level Creation Functions ---
+        function createLevel(levelNum) {
+            clearTimeout(resetTimeoutId); 
+            
+            // Step 1: Clean up and dispose of existing player and its body parts
+            if (player && scene.children.includes(player)) {
+                scene.remove(player); // Remove old player group from scene
+                // Dispose of its children (old player parts)
+                while(player.children.length > 0){
+                    const child = player.children[0];
+                    player.remove(child);
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            }
+            // Clear any previously detached parts from the scene and array
+            for (const part of detachedParts) {
+                scene.remove(part); 
+                if (part.geometry) part.geometry.dispose();
+                if (part.material) part.material.dispose();
+            }
+            detachedParts = []; 
+
+            // Step 2: Create a BRAND NEW player group instance
+            player = new THREE.Group();
+            scene.add(player); // Add the new player group to the scene
+            player.position.set(0, 0.25 + playerHalfHeight, 0); // Set initial position for the new player
+            playerVelocity.set(0, 0, 0); // Reset player velocity
+            player.rotation.y = 0; // Reset overall player rotation
+            player.updateMatrix(); // Force update of local matrix
+            player.matrixWorldNeedsUpdate = true; // Signal world matrix needs update
+
+            // Step 3: Create new player body part meshes
+            // Head (Yellow) - Now a group of cylinder + hemispheres for rounded edges
+            headMesh = new THREE.Group();
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+            const headCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.5, 32), headMaterial);
+            const headTopSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2), headMaterial);
+            const headBottomSphere = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), headMaterial);
+            
+            // Positions relative to the headMesh group's center (head total height is 1.0, center at y=0)
+            headCylinder.position.set(0, 0, 0); // Cylinder is centered at 0
+            headTopSphere.position.set(0, 0.25, 0); // Top sphere cap sits on top of cylinder
+            headBottomSphere.position.set(0, -0.25, 0); // Bottom sphere cap sits below cylinder
+
+            headMesh.add(headCylinder, headTopSphere, headBottomSphere);
+            // Ensure all parts of the head group cast shadows
+            headCylinder.castShadow = true;
+            headTopSphere.castShadow = true;
+            headBottomSphere.castShadow = true;
+
+
+            // Torso (Light Blue)
+            torsoMesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x87CEEB }));
+            // Left Arm (Yellow)
+            leftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            // Right Arm (Yellow)
+            rightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0xFFD700 }));
+            // Left Leg (Green)
+            leftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x66bb6a }));
+            // Right Leg (Green)
+            rightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(0.75, 2, 0.75), new THREE.MeshLambertMaterial({ color: 0x66bb6a }));
+
+            // Set castShadow for all new parts and add them to the NEW player group
+            [headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh].forEach(mesh => {
+                // headMesh is already a group, individual parts within it cast shadows above
+                if (mesh !== headMesh) { // Avoid setting castShadow on the group itself unnecessarily
+                    mesh.castShadow = true;
+                }
+                player.add(mesh); 
+            });
+
+            // Set local positions for new parts relative to the player group
+            headMesh.position.y = 2.0; // Head group's center is at y=2.0 (total player height is 5.25)
+            torsoMesh.position.y = 0.5;
+            leftArmMesh.position.set(-1.125, 0.5, 0);
+            rightArmMesh.position.set(1.125, 0.5, 0);
+            leftLegMesh.position.set(-0.375, -1.5, 0);
+            rightLegMesh.position.set(0.375, -1.5, 0);
+
+            // Force update of individual part matrices after setting local positions
+            [headMesh, torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh].forEach(part => {
+                part.updateMatrix();
+                part.matrixWorldNeedsUpdate = true;
+            });
+
+            isPlayerDead = false; // Reset death state
+            
+            currentLevel = levelNum;
+            onGround = true; // Player starts on ground for new level
+
+            // If noclip was active, disable it on level change
+            if (noclipEnabled) {
+                noclipEnabled = false;
+                hackStatusSpan.style.color = '#dc3545';
+                hackStatusSpan.innerText = 'Noclip: OFF';
+            }
+
+            // Generate platforms for the chosen level
+            switch(levelNum) {
+                case 1:
+                    showGameStatus("Level 1");
+                    clearPlatforms(); // Clear existing platforms before creating new ones
+                    createLevel1Platforms();
+                    break;
+                case 2:
+                    showGameStatus("Level 2!");
+                    clearPlatforms();
+                    createLevel2Platforms();
+                    break;
+                case 3:
+                    showGameStatus("Level 3!");
+                    clearPlatforms();
+                    createLevel3Platforms();
+                    break;
+                case 4:
+                    showGameStatus("Level 4!");
+                    clearPlatforms();
+                    createLevel4Platforms();
+                    break;
+                case 5:
+                    showGameStatus("Level 5!");
+                    clearPlatforms();
+                    createLevel5Platforms();
+                    break;
+                case 6:
+                    showGameStatus("Level 6!");
+                    clearPlatforms();
+                    createLevel6Platforms();
+                    break;
+                case 7:
+                    showGameStatus("Level 7!");
+                    clearPlatforms();
+                    createLevel7Platforms();
+                    break;
+                case 8:
+                    showGameStatus("Level 8!");
+                    clearPlatforms();
+                    createLevel8Platforms();
+                    break;
+                case 9:
+                    showGameStatus("Level 9!");
+                    clearPlatforms();
+                    createLevel9Platforms();
+                    break;
+                case 10:
+                    showGameStatus("Level 10!");
+                    clearPlatforms();
+                    createLevel10Platforms();
+                    break;
+                default:
+                    showGameStatus("Game Complete! You beat all 10 levels!");
+                    break;
+            }
+        }
+
+        function createLevel1Platforms() {
+            // Parameters: x, y, z, width, height, depth, color
+            createPlatform(0, 0, 0, 8, 0.5, 8, 0x4CAF50); // Start platform (dark green)
+            createPlatform(15, 0, 0, 5, 0.5, 5, 0xFF5722); // Red-orange platform
+            createPlatform(25, 3, 10, 6, 0.5, 6, 0x2196F3); // Blue platform, higher
+            createPlatform(35, 0, -10, 7, 0.5, 7, 0xFFEB3B); // Yellow platform
+            createPlatform(45, 6, 0, 3, 0.5, 3, 0x9C27B0); // Purple platform, small and high
+            createPlatform(55, 2, 15, 4, 0.5, 4, 0x00BCD4); // Cyan platform
+            createPlatform(65, 8, -5, 2, 0.5, 2, 0xFF9800); // Orange platform, tiny
+            level1EndPlatform = createPlatform(75, 0, 0, 10, 0.5, 10, 0x795548); // Brownish end platform for Level 1
+        }
+
+        function createLevel2Platforms() {
+            // Harder platforms: smaller, higher, more spread out
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0x66bb6a); // Start platform for Level 2
+            createPlatform(10, 4, 0, 3, 0.5, 3, 0xF44336); // Red, higher jump
+            createPlatform(18, 8, 5, 2, 0.5, 2, 0x4CAF50); // Green, smaller, more precise
+            createPlatform(25, 12, -5, 3, 0.5, 3, 0xFFEB3B); // Yellow, high and far
+            createPlatform(30, 15, 0, 2, 0.5, 2, 0x9C27B0); // Purple, very high and small
+            createPlatform(38, 18, 8, 1, 0.5, 1, 0x2196F3); // Blue, very small, tricky
+            level2EndPlatform = createPlatform(45, 20, -10, 4, 0.5, 4, 0xFF5722); // Orange, end platform for Level 2
+        }
+
+        function createLevel3Platforms() {
+            // More verticality, smaller platforms, some gaps requiring precision
+            createPlatform(0, 0, 0, 6, 0.5, 6, 0xADD8E6); // Light blue start
+            createPlatform(8, 5, 0, 4, 0.5, 4, 0x87CEEB); // Sky blue
+            createPlatform(15, 10, 5, 3, 0.5, 3, 0x4682B4); // Steel blue
+            createPlatform(20, 15, -5, 2, 0.5, 2, 0x1E90FF); // Dodger blue
+            createPlatform(22, 20, 0, 2, 0.5, 2, 0x6A5ACD); // Slate blue
+            createPlatform(25, 25, 8, 1.5, 0.5, 1.5, 0x483D8B); // Dark slate blue
+            createPlatform(30, 28, 15, 1, 0.5, 1, 0x7B68EE); // Medium slate blue
+            level3EndPlatform = createPlatform(38, 30, 0, 5, 0.5, 5, 0xBA55D3); // Medium purple end platform for Level 3
+        }
+
+        function createLevel4Platforms() {
+            // Introducing more spaced out, smaller jumps, and potentially moving platforms (conceptually, not implemented as moving here)
+            createPlatform(0, 0, 0, 7, 0.5, 7, 0xFFD700); // Gold start
+            createPlatform(12, 0, 0, 2, 0.5, 2, 0xFFC107); // Amber, small jump
+            createPlatform(18, 4, 5, 2, 0.5, 2, 0xFF9800); // Orange, higher
+            createPlatform(22, 8, -5, 1.5, 0.5, 1.5, 0xF44336); // Red, even smaller
+            createPlatform(25, 12, 0, 1.5, 0.5, 1.5, 0xE91E63); // Pink
+            createPlatform(28, 16, 8, 1, 0.5, 1, 0x9C27B0); // Purple, very small
+            createPlatform(30, 18, 15, 0.8, 0.5, 0.8, 0x673AB7); // Deep purple, tiny
+            level4EndPlatform = createPlatform(35, 20, 0, 4, 0.5, 4, 0x2196F3); // Blue end platform for Level 4
+        }
+
+        function createLevel5Platforms() {
+            // Ultimate challenge: very small platforms, large gaps, requires full jump strength and speed
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0x00FFFF); // Cyan start
+            createPlatform(10, 5, 0, 1.5, 0.5, 1.5, 0x00BCD4); // Teal, high and small
+            createPlatform(15, 10, 8, 1, 0.5, 1, 0x009688); // Dark teal, very small
+            createPlatform(18, 15, -8, 0.8, 0.5, 0.8, 0x4CAF50); // Green, super tiny, far
+            createPlatform(20, 20, 0, 0.7, 0.5, 0.7, 0x8BC34A); // Light green, even smaller
+            createPlatform(22, 25, 10, 0.6, 0.5, 0.6, 0xCDDC39); // Lime green, extremely small
+            createPlatform(24, 30, -10, 0.5, 0.5, 0.5, 0xFFEB3B); // Yellow, minimal
+            level5EndPlatform = createPlatform(28, 35, 0, 3, 0.5, 3, 0xFF4500); // OrangeRed, final platform for Level 5
+        }
+
+        function createLevel6Platforms() {
+            // Introducing more intricate jumps and varying platform sizes
+            createPlatform(0, 0, 0, 6, 0.5, 6, 0x4CAF50); // Start platform
+            createPlatform(8, 2, 5, 3, 0.5, 3, 0x2196F3); // Blue, slightly higher
+            createPlatform(15, 5, -3, 2, 0.5, 2, 0xFF5722); // Red, higher and smaller
+            createPlatform(20, 8, 8, 4, 0.5, 4, 0x9C27B0); // Purple, a wider jump to a medium platform
+            createPlatform(28, 12, 0, 2.5, 0.5, 2.5, 0x00BCD4); // Cyan, high and small
+            createPlatform(35, 15, -10, 1.5, 0.5, 1.5, 0xFFD700); // Yellow, very high and precise
+            createPlatform(40, 18, 5, 1, 0.5, 1, 0x795548); // Brown, very tiny
+            level6EndPlatform = createPlatform(48, 20, 0, 5, 0.5, 5, 0x66bb6a); // Green end platform
+        }
+
+        function createLevel7Platforms() {
+            // Long jumps over gaps, some platforms appearing lower
+            createPlatform(0, 0, 0, 7, 0.5, 7, 0xADD8E6); // Start
+            createPlatform(15, -2, 0, 4, 0.5, 4, 0x87CEEB); // Below start, requiring a drop and jump
+            createPlatform(25, 2, 8, 3, 0.5, 3, 0x4682B4); // Up and far
+            createPlatform(35, 7, -8, 2.5, 0.5, 2.5, 0x1E90FF); // Higher, longer jump
+            createPlatform(45, 10, 0, 2, 0.5, 2, 0x6A5ACD); // Very long jump
+            createPlatform(52, 13, 10, 1.5, 0.5, 1.5, 0x483D8B); // Small, high and far
+            createPlatform(58, 16, -5, 1, 0.5, 1, 0xBA55D3); // Tiny, very high
+            level7EndPlatform = createPlatform(65, 18, 0, 6, 0.5, 6, 0xF44336); // Red end platform
+        }
+
+        function createLevel8Platforms() {
+            // Floating platforms, very small targets, demanding precision
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0xFFC107); // Start
+            createPlatform(10, 3, 0, 2, 0.5, 2, 0xFF9800); // Small float
+            createPlatform(16, 6, 5, 1.5, 0.5, 1.5, 0xE91E63); // Smaller, higher float
+            createPlatform(20, 9, -5, 1, 0.5, 1, 0x9C27B0); // Very small target
+            createPlatform(24, 12, 0, 0.8, 0.5, 0.8, 0x673AB7); // Tiny, high
+            createPlatform(28, 15, 8, 0.7, 0.5, 0.7, 0x2196F3); // Micro jump
+            createPlatform(30, 18, -8, 0.5, 0.5, 0.5, 0x00BCD4); // Minimal
+            level8EndPlatform = createPlatform(35, 20, 0, 3, 0.5, 3, 0x66bb6a); // Green end platform
+        }
+
+        function createLevel9Platforms() {
+            // Series of vertical and horizontal jumps with minimal resting space
+            createPlatform(0, 0, 0, 5, 0.5, 5, 0x00FFFF); // Start
+            createPlatform(6, 4, 0, 2, 0.5, 2, 0x00BCD4); // Up and short
+            createPlatform(12, 8, 3, 1.5, 0.5, 1.5, 0x009688); // Up and further
+            createPlatform(18, 12, -3, 1, 0.5, 1, 0x4CAF50); // High precision
+            createPlatform(22, 16, 0, 0.8, 0.5, 0.8, 0x8BC34A); // Vertical challenge
+            createPlatform(26, 20, 5, 0.7, 0.5, 0.7, 0xCDDC39); // Very tight jump
+            createPlatform(30, 24, -5, 0.6, 0.5, 0.6, 0xFFEB3B); // Extreme precision
+            level9EndPlatform = createPlatform(35, 28, 0, 4, 0.5, 4, 0xFF4500); // OrangeRed end platform
+        }
+
+        function createLevel10Platforms() {
+            // The ultimate level: a long, difficult series of small, high, and distant platforms
+            createPlatform(0, 0, 0, 4, 0.5, 4, 0xFF00FF); // Magenta start
+            createPlatform(8, 3, 0, 1.2, 0.5, 1.2, 0xFF00FF); // Small jump
+            createPlatform(15, 7, 5, 1, 0.5, 1, 0xFF00FF); // Higher, further
+            createPlatform(20, 12, -5, 0.8, 0.5, 0.8, 0xFF00FF); // Precision needed
+            createPlatform(25, 17, 0, 0.7, 0.5, 0.7, 0xFF00FF); // Very high
+            createPlatform(28, 22, 8, 0.6, 0.5, 0.6, 0xFF00FF); // Tiny, far
+            createPlatform(30, 27, -8, 0.5, 0.5, 0.5, 0xFF00FF); // Extreme jump
+            createPlatform(32, 32, 0, 0.4, 0.5, 0.4, 0xFF00FF); // Final tiny jump
+            level10EndPlatform = createPlatform(38, 35, 0, 5, 0.5, 5, 0xFFFFFF); // White ultimate end platform
+        }
+
+
+        function updateCameraPosition() {
+            // The player's group's origin is now at its center, so lookAt the player's position directly.
+            // Adjust camera.position to orbit around player's center.
+            const polarAngle = cameraAngleX; // Phi (vertical angle)
+            const azimuthalAngle = cameraAngleY; // Theta (horizontal angle)
+
+            const offsetX = cameraDistance * Math.sin(polarAngle) * Math.cos(azimuthalAngle);
+            const offsetZ = cameraDistance * Math.sin(polarAngle) * Math.sin(azimuthalAngle);
+            const offsetY = cameraDistance * Math.cos(polarAngle);
+
+            camera.position.set(
+                player.position.x + offsetX,
+                player.position.y + offsetY,
+                player.position.z + offsetZ
+            );
+            camera.lookAt(player.position); // Camera looks at the center of the player group
+        }
+
+        // --- Core Game Loop ---
+        function update() {
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastUpdateTime) / 1000; // Delta time in seconds
+            lastUpdateTime = currentTime;
+
+            // --- Handle player death and scattering ---
+            if (isPlayerDead) {
+                // Update scattered parts
+                for (let i = detachedParts.length - 1; i >= 0; i--) {
+                    const part = detachedParts[i];
+                    if (part.userData.velocity) {
+                        part.userData.velocity.y += gravity * deltaTime; // Apply gravity
+                        part.position.add(part.userData.velocity.clone().multiplyScalar(deltaTime));
+                        part.rotation.x += part.userData.angularVelocity.x * deltaTime;
+                        part.rotation.y += part.userData.angularVelocity.y * deltaTime;
+                        part.rotation.z += part.userData.angularVelocity.z * deltaTime;
+
+                        // Collision with the killbrick
+                        const groundSurfaceY = ground.position.y;
+                        
+                        let partBottomY;
+                        // Attempt to get accurate bottom for various geometries
+                        if (part.geometry && part.geometry.boundingBox) {
+                            part.geometry.computeBoundingBox(); // Ensure bounding box is computed
+                            partBottomY = part.position.y + part.geometry.boundingBox.min.y; // World bottom relative to part's local origin
+                        } else if (part.geometry && part.geometry.boundingSphere) {
+                            part.geometry.computeBoundingSphere();
+                            partBottomY = part.position.y - part.geometry.boundingSphere.radius;
+                        } else {
+                            // Fallback for unexpected cases, use a reasonable estimate for small parts
+                            partBottomY = part.position.y - 0.5; // Default half-height for small parts
+                        }
+                        
+                        if (partBottomY <= groundSurfaceY && part.userData.velocity.y < 0) {
+                            // If the part has passed or touched the ground surface and is moving downwards
+                            // Snap position to just above the ground surface.
+                            // The offset from the part's center to its bottom will be `part.position.y - partBottomY`.
+                            part.position.y += (groundSurfaceY - partBottomY) + 0.01; 
+                            part.userData.velocity.y = 0; // Stop vertical movement
+                            part.userData.angularVelocity.set(0, 0, 0); // Stop rotation
+                            // Slightly dampen horizontal movement on impact
+                            part.userData.velocity.x *= 0.7;
+                            part.userData.velocity.z *= 0.7;
+
+                            // If horizontal velocity is very low, stop it completely to prevent endless sliding
+                            if (Math.abs(part.userData.velocity.x) < 0.1) part.userData.velocity.x = 0;
+                            if (Math.abs(part.userData.velocity.z) < 0.1) part.userData.velocity.z = 0;
+                        }
+                    }
+                }
+                return; // Don't process player movement if dead
+            }
+
+            // --- Player Movement (Horizontal) ---
+            let targetMoveDirection = new THREE.Vector3();
+            
+            // Get the camera's forward direction in world space
+            _cameraDirection.copy(camera.getWorldDirection(_cameraDirection));
+            _cameraDirection.y = 0; // Flatten to horizontal plane
+            _cameraDirection.normalize(); // Normalize after flattening
+
+            // Calculate the horizontal right direction
+            _rightDirection.crossVectors(_cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
+
+            if (keys.w) targetMoveDirection.add(_cameraDirection);
+            if (keys.s) targetMoveDirection.sub(_cameraDirection);
+            if (keys.a) targetMoveDirection.sub(_rightDirection);
+            if (keys.d) targetMoveDirection.add(_rightDirection);
+
+            // Normalize target direction if input is present
+            if (targetMoveDirection.lengthSq() > 0) {
+                targetMoveDirection.normalize().multiplyScalar(playerSpeed); // Target vector at max speed
+                // Linearly interpolate playerVelocity towards the targetMoveDirection
+                playerVelocity.x = THREE.MathUtils.lerp(playerVelocity.x, targetMoveDirection.x, accelerationRate);
+                playerVelocity.z = THREE.MathUtils.lerp(playerVelocity.z, targetMoveDirection.z, accelerationRate);
+            } else {
+                // Apply friction if no input
+                playerVelocity.x *= frictionRate;
+                playerVelocity.z *= frictionRate;
+                // Stop completely if velocity is very low
+                if (Math.abs(playerVelocity.x) < 0.1) playerVelocity.x = 0;
+                if (Math.abs(playerVelocity.z) < 0.1) playerVelocity.z = 0;
+            }
+
+
+            // --- Apply vertical movement (gravity or noclip) ---
+            if (noclipEnabled) {
+                playerVelocity.y = 0; // Reset vertical velocity for direct control
+                const noclipVerticalSpeed = playerSpeed; // Use playerSpeed for noclip vertical
+                if (keys.space) {
+                    playerVelocity.y = noclipVerticalSpeed; // Move up with space
+                } else if (keys.shift) {
+                    playerVelocity.y = -noclipVerticalSpeed; // Move down with shift
+                }
+                onGround = false; // Always considered airborne in noclip
+            } else {
+                playerVelocity.y += gravity * deltaTime; // Apply gravity normally
+            }
+            
+            // Store proposed next position
+            const proposedPosition = player.position.clone().add(playerVelocity.clone().multiplyScalar(deltaTime));
+
+            // --- Collision Detection for Player Bounding Box ---
+            let newOnGround = false;
+            // Create player bounding box at proposed position
+            const playerMin = new THREE.Vector3(
+                proposedPosition.x - playerHalfWidth,
+                proposedPosition.y - playerHalfHeight,
+                proposedPosition.z - playerHalfDepth
+            );
+            const playerMax = new THREE.Vector3(
+                proposedPosition.x + playerHalfWidth,
+                proposedPosition.y + playerHalfHeight,
+                proposedPosition.z + playerHalfDepth
+            );
+
+            const playerBBox = new THREE.Box3(playerMin, playerMax);
+
+            // --- Killbrick Ground Check ---
+            // Only perform killbrick check if not in noclip
+            if (!noclipEnabled) {
+                const groundBBox = new THREE.Box3().setFromObject(ground); // Get ground's bounding box
+                if (playerBBox.intersectsBox(groundBBox)) {
+                    if (!isPlayerDead) { // Ensure death logic only runs once
+                        handlePlayerDeath();
+                    }
+                    return; // Stop update cycle for this frame (player is dead)
+                }
+            }
+
+            // --- Fall Detection (if falling off platforms into the void, *below* the killbrick ground itself) ---
+            // This is a backup for when the player falls so far they are below the killbrick too.
+            // Also only applies if not in noclip mode.
+            if (!noclipEnabled && player.position.y < ground.position.y - 10) { // If player falls 10 units below the killbrick
+                if (!isPlayerDead) {
+                    handlePlayerDeath();
+                }
+                    return; // Stop update cycle
+            }
+
+
+            // --- Regular Platform Collision Detection and Resolution ---
+            // Only apply regular collision if not in noclip mode and not already dead (or handled death)
+            if (!noclipEnabled && !isPlayerDead) {
+                for (const platform of platforms) {
+                    const platformBBox = new THREE.Box3().setFromObject(platform);
+
+                    // If player is intersecting with the platform
+                    if (playerBBox.intersectsBox(platformBBox)) {
+                        // Level transition checks
+                        if (currentLevel === 1 && platform === level1EndPlatform) {
+                            createLevel(2);
+                            return; // Stop current update cycle, new level initiated
+                        } else if (currentLevel === 2 && platform === level2EndPlatform) {
+                            createLevel(3);
+                            return;
+                        } else if (currentLevel === 3 && platform === level3EndPlatform) {
+                            createLevel(4);
+                            return;
+                        } else if (currentLevel === 4 && platform === level4EndPlatform) {
+                            createLevel(5);
+                            return;
+                        } else if (currentLevel === 5 && platform === level5EndPlatform) {
+                            createLevel(6); // Transition to Level 6
+                            return;
+                        } else if (currentLevel === 6 && platform === level6EndPlatform) {
+                            createLevel(7); // Transition to Level 7
+                            return;
+                        } else if (currentLevel === 7 && platform === level7EndPlatform) {
+                            createLevel(8); // Transition to Level 8
+                            return;
+                        } else if (currentLevel === 8 && platform === level8EndPlatform) {
+                            createLevel(9); // Transition to Level 9
+                            return;
+                        } else if (currentLevel === 9 && platform === level9EndPlatform) {
+                            createLevel(10); // Transition to Level 10
+                            return;
+                        } else if (currentLevel === 10 && platform === level10EndPlatform) {
+                            showGameStatus("Game Complete! You've mastered all 10 levels!"); // Game completed
+                            return;
+                        }
+
+
+                        // Determine overlap on each axis
+                        const overlapX = Math.max(0, Math.min(playerMax.x, platformBBox.max.x) - Math.max(playerMin.x, platformBBox.min.x));
+                        const overlapY = Math.max(0, Math.min(playerMax.y, platformBBox.max.y) - Math.max(playerMin.y, platformBBox.min.y));
+                        const overlapZ = Math.max(0, Math.min(playerMax.z, platformBBox.max.z) - Math.max(playerMin.z, platformBBox.min.z));
+
+                        // Resolve collision on the axis with the smallest overlap
+                        if (overlapX < overlapY && overlapX < overlapZ) {
+                            // Resolve X axis
+                            if (proposedPosition.x < platform.position.x) { // Player is to the left of platform
+                                proposedPosition.x -= overlapX;
+                            } else { // Player is to the right
+                                proposedPosition.x += overlapX;
+                            }
+                        } else if (overlapY < overlapX && overlapY < overlapZ) {
+                            // Resolve Y axis (vertical collision)
+                            // Collision from below (player falling onto platform)
+                            if (playerVelocity.y < 0 && proposedPosition.y - playerHalfHeight <= platformBBox.max.y) { // Strict comparison
+                                proposedPosition.y = platformBBox.max.y + playerHalfHeight;
+                                playerVelocity.y = 0; // Stop vertical movement
+                                newOnGround = true; // Player is now on the ground
+                            } 
+                            // Collision from above (player jumping into bottom of platform)
+                            else if (playerVelocity.y > 0 && proposedPosition.y + playerHalfHeight >= platformBBox.min.y) { // Strict comparison
+                                proposedPosition.y = platformBBox.min.y - playerHalfHeight - 0.01; // Subtract small epsilon
+                                playerVelocity.y = 0; // Stop vertical movement
+                            }
+                        } else {
+                            // Resolve Z axis
+                            if (proposedPosition.z < platform.position.z) { // Player is in front of platform
+                                proposedPosition.z -= overlapZ;
+                            } else { // Player is behind
+                                proposedPosition.z += overlapZ;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update player's position after all collision resolutions
+            player.position.copy(proposedPosition);
+            
+            // --- Additional check to ensure player is on ground if very close to a platform's surface ---
+            // This is crucial for initial spawn and preventing minor slips.
+            if (!noclipEnabled) {
+                let foundGroundNearBy = false;
+                for (const platform of platforms) {
+                    const platformBBox = new THREE.Box3().setFromObject(platform);
+                    const playerBottomY = player.position.y - playerHalfHeight;
+                    const platformTopY = platformBBox.max.y;
+
+                    // Check if player's feet are within a small vertical tolerance of a platform's top
+                    // AND there's horizontal overlap.
+                    if (Math.abs(playerBottomY - platformTopY) < 0.1 && // Within a small tolerance vertically
+                        player.position.x + playerHalfWidth > platformBBox.min.x &&
+                        player.position.x - playerHalfWidth < platformBBox.max.x &&
+                        player.position.z + playerHalfDepth > platformBBox.min.z &&
+                        player.position.z - playerHalfDepth < platformBBox.max.z)
+                    {
+                        // If found, snap to ground and reset vertical velocity
+                        player.position.y = platformTopY + playerHalfHeight;
+                        playerVelocity.y = 0;
+                        foundGroundNearBy = true;
+                        break; // Found ground, no need to check other platforms
+                    }
+                }
+                onGround = foundGroundNearBy; // Update onGround status based on this check
+            } else {
+                onGround = false; // In noclip, player is never on ground
+            }
+
+            // Update camera position
+            updateCameraPosition();
+
+            // --- Make player face away from camera ---
+            // Get the camera's forward direction (already calculated as _cameraDirection flattened to horizontal)
+            // To make the player face AWAY from the camera, we need the opposite direction.
+            player.rotation.y = Math.atan2(-_cameraDirection.x, -_cameraDirection.z);
+        }
+
+        // --- Player Death Handling ---
+        function handlePlayerDeath() {
+            showGameStatus("You Died!");
+            isPlayerDead = true;
+
+            // Get current world position of each part before they are detached
+            const partsAndWorldPositions = [];
+            // Get children of the head group (cylinder, top/bottom spheres)
+            const headChildren = headMesh ? [...headMesh.children] : [];
+            const allCurrentParts = [torsoMesh, leftArmMesh, rightArmMesh, leftLegMesh, rightLegMesh, ...headChildren].filter(p => p !== undefined);
+
+            allCurrentParts.forEach(part => {
+                part.updateMatrixWorld(true); // Ensure world matrix is up-to-date for worldPosition
+                const worldPosition = new THREE.Vector3();
+                part.getWorldPosition(worldPosition);
+                partsAndWorldPositions.push({ part, worldPosition });
+            });
+
+            // Remove the player group from the scene (which also removes its children from scene)
+            scene.remove(player);
+
+            // Re-add individual parts to the scene at their world positions, then apply scattering
+            for (const { part, worldPosition } of partsAndWorldPositions) { 
+                // Ensure part is no longer a child of the player group/head group before re-adding to scene
+                if (part.parent) { 
+                    part.parent.remove(part); 
+                }
+                scene.add(part);
+                part.position.copy(worldPosition); // Set its position to its world position at time of detachment
+
+                // Apply scattering physics properties
+                part.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 20, // Random horizontal velocity
+                    Math.random() * 15 + 10, // Upward kick (makes them fly up)
+                    (Math.random() - 0.5) * 20
+                );
+                part.userData.angularVelocity = new THREE.Euler(
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5,
+                    (Math.random() - 0.5) * 0.5
+                );
+                detachedParts.push(part);
+            }
+            
+            clearTimeout(resetTimeoutId);
+            resetTimeoutId = setTimeout(() => {
+                createLevel(currentLevel); // Reset to current level after death animation
+            }, 5000); // 5 seconds delay for scattering effect
+        }
+
+        // --- UI Functions ---
+        function showGameStatus(message) {
+            gameStatusDiv.innerText = message;
+            gameStatusDiv.style.display = 'block';
+            gameStatusDiv.style.opacity = 1;
+            gameStatusDiv.style.transition = 'opacity 0.3s ease-in-out';
+            // For level messages, make it last a bit longer
+            if (message.includes("Level") || message.includes("Game Complete") || message.includes("Noclip") || message.includes("Died")) {
+                 setTimeout(() => {
+                     gameStatusDiv.style.opacity = 0;
+                     setTimeout(() => gameStatusDiv.style.display = 'none', 300);
+                 }, 2000); // Show for 2 seconds
+            }
+        }
+
+        function hideGameStatus() {
+            gameStatusDiv.style.display = 'none';
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            update(); // Call update logic
+            renderer.render(scene, camera); // Render the scene
+        }
+
+        // --- Start the game ---
+        window.onload = function () {
+            init(); // Initialize scene
+            animate(); // Start animation loop
+        };
+    </script>
 </body>
 </html>
