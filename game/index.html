@@ -124,7 +124,7 @@
         let playerVelocity = new THREE.Vector3(); // Represents continuous velocity
         const playerSpeed = 28; // Max horizontal speed
         const accelerationRate = 0.1; // How quickly player accelerates to max speed
-        const frictionRate = 0.5; // How quickly player decelerates (LOWER VALUE = MORE SUDDEN STOP)
+        const frictionRate = 0.2; // How quickly player decelerates (LOWER VALUE = MORE SUDDEN STOP)
         const jumpStrength = 25; // Initial upward velocity on jump
         const gravity = -50; // Units per second squared
         let onGround = false;
@@ -394,7 +394,11 @@
             cameraAngleY += deltaX * 0.007; // Horizontal rotation sensitivity
             cameraAngleX -= deltaY * 0.007; // Vertical rotation sensitivity (non-inverted)
 
-            cameraAngleX = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleX)); // Clamp vertical angle to prevent flipping
+            // Clamp vertical angle to prevent flipping
+            // cameraAngleX is the polar angle from the positive Y-axis.
+            // 0.1 radians ensures it's not perfectly straight up (avoids singularity).
+            // Math.PI / 2 - 0.1 ensures it doesn't go below the horizontal plane (prevents camera from going under character).
+            cameraAngleX = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraAngleX)); 
 
             // Only update previousMouseX/Y if not pointer locked,
             // as movementX/Y are relative deltas and previous coordinates are not needed for calculation
@@ -470,14 +474,14 @@
             // Step 2: Create a BRAND NEW player group instance
             player = new THREE.Group();
             scene.add(player); // Add the new player group to the scene
-            player.position.set(0, 0.25 + playerHalfHeight, 0); // Set initial position for the new player
-            playerVelocity.set(0, 0, 0); // Reset player velocity
+            // Player velocity reset here, position will be set after platforms
+            playerVelocity.set(0, 0, 0); 
             player.rotation.y = 0; // Reset overall player rotation
             player.updateMatrix(); // Force update of local matrix
             player.matrixWorldNeedsUpdate = true; // Signal world matrix needs update
 
             // Step 3: Create new player body part meshes
-            // Head (Yellow) - Now a group of cylinder + hemispheres for rounded edges
+            // Head (Yellow)
             headMesh = new THREE.Group();
             const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
             const headCylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.5, 32), headMaterial);
@@ -531,9 +535,8 @@
             });
 
             isPlayerDead = false; // Reset death state
-            
             currentLevel = levelNum;
-            onGround = true; // Player starts on ground for new level
+            // onGround will be set after position calculation for stability
 
             // If noclip was active, disable it on level change
             if (noclipEnabled) {
@@ -542,12 +545,12 @@
                 hackStatusSpan.innerText = 'Noclip: OFF';
             }
 
-            // Generate platforms for the chosen level
+            // Generate platforms for the chosen level (this will populate the 'platforms' array)
             switch(levelNum) {
                 case 1:
                     showGameStatus("Level 1");
-                    clearPlatforms(); // Clear existing platforms before creating new ones
-                    createLevel1Platforms();
+                    clearPlatforms(); 
+                    createLevel1Platforms(); // Platforms array is populated here
                     break;
                 case 2:
                     showGameStatus("Level 2!");
@@ -597,6 +600,23 @@
                 default:
                     showGameStatus("Game Complete! You beat all 10 levels!");
                     break;
+            }
+
+            // --- IMPORTANT: Set player position *AFTER* platforms are created ---
+            if (platforms.length > 0) {
+                const startingPlatform = platforms[0]; // Assuming the first platform is always the starting one
+                // Calculate the exact top surface Y coordinate of the starting platform
+                const platformTopY = startingPlatform.position.y + startingPlatform.geometry.parameters.height / 2;
+                player.position.set(
+                    startingPlatform.position.x, // Center X of platform
+                    platformTopY + playerHalfHeight + 0.01, // Player's feet slightly above platform top + small epsilon
+                    startingPlatform.position.z // Center Z of platform
+                );
+                onGround = true; // Player is definitely on ground when spawned correctly
+            } else {
+                // Fallback if no platforms are created (shouldn't happen for valid levels)
+                player.position.set(0, 0.25 + playerHalfHeight, 0);
+                onGround = true; // Still assume on ground
             }
         }
 
@@ -793,13 +813,37 @@
                 return; // Don't process player movement if dead
             }
 
+            // --- Reset onGround if no longer standing on a platform ---
+            // This prevents the player from being 'onGround' mid-air after walking off an edge.
+            if (onGround && !noclipEnabled) {
+                let foundSupportingPlatform = false;
+                const currentPlayerBBox = new THREE.Box3().setFromObject(player);
+                for (const platform of platforms) {
+                    const platformBBox = new THREE.Box3().setFromObject(platform);
+                    // Check for significant horizontal overlap AND vertical proximity
+                    if (Math.max(0, Math.min(currentPlayerBBox.max.x, platformBBox.max.x) - Math.max(currentPlayerBBox.min.x, platformBBox.min.x)) > 0.1 &&
+                        Math.max(0, Math.min(currentPlayerBBox.max.z, platformBBox.max.z) - Math.max(currentPlayerBBox.min.z, platformBBox.min.z)) > 0.1 &&
+                        Math.abs(currentPlayerBBox.min.y - platformBBox.max.y) < 0.2) // Feet very close to platform top
+                    {
+                        foundSupportingPlatform = true;
+                        break;
+                    }
+                }
+                if (!foundSupportingPlatform) {
+                    onGround = false;
+                }
+            }
+
+
             // --- Player Movement (Horizontal) ---
             let targetMoveDirection = new THREE.Vector3();
-            // Use the globally declared variables
-            _cameraDirection.copy(camera.getWorldDirection(_cameraDirection)); // Get direction camera is facing. Pass _cameraDirection to avoid new object.
-            _cameraDirection.y = 0; // Only consider horizontal component
-            _cameraDirection.normalize();
+            
+            // Get the camera's forward direction in world space
+            _cameraDirection.copy(camera.getWorldDirection(_cameraDirection));
+            _cameraDirection.y = 0; // Flatten to horizontal plane
+            _cameraDirection.normalize(); // Normalize after flattening
 
+            // Calculate the horizontal right direction
             _rightDirection.crossVectors(_cameraDirection, new THREE.Vector3(0, 1, 0)).normalize();
 
             if (keys.w) targetMoveDirection.add(_cameraDirection);
@@ -834,176 +878,155 @@
                 }
                 onGround = false; // Always considered airborne in noclip
             } else {
-                playerVelocity.y += gravity * deltaTime; // Apply gravity normally
+                // Only apply gravity if not on ground
+                if (!onGround) {
+                    playerVelocity.y += gravity * deltaTime; // Apply gravity normally
+                } else {
+                    playerVelocity.y = 0; // Ensure vertical velocity is zero when on ground
+                }
             }
             
-            // Store proposed next position
-            const proposedPosition = player.position.clone().add(playerVelocity.clone().multiplyScalar(deltaTime));
+            // Store player's current position to compare against proposed for collision direction
+            const currentPlayerPosition = player.position.clone();
 
-            // --- Collision Detection for Player Bounding Box ---
-            let newOnGround = false;
-            // Create player bounding box at proposed position
-            const playerMin = new THREE.Vector3(
-                proposedPosition.x - playerHalfWidth,
-                proposedPosition.y - playerHalfHeight,
-                proposedPosition.z - playerHalfDepth
-            );
-            const playerMax = new THREE.Vector3(
-                proposedPosition.x + playerHalfWidth,
-                proposedPosition.y + playerHalfHeight,
-                proposedPosition.z + playerHalfDepth
+            // --- First Pass: Vertical Movement and Collision Resolution (Y-axis) ---
+            let newProposedY = currentPlayerPosition.y + playerVelocity.y * deltaTime;
+            let playerBBoxVerticalCheck = new THREE.Box3(
+                new THREE.Vector3(currentPlayerPosition.x - playerHalfWidth, newProposedY - playerHalfHeight, currentPlayerPosition.z - playerHalfDepth),
+                new THREE.Vector3(currentPlayerPosition.x + playerHalfWidth, newProposedY + playerHalfHeight, currentPlayerPosition.z + playerHalfDepth)
             );
 
-            const playerBBox = new THREE.Box3(playerMin, playerMax);
-
-            // --- Killbrick Ground Check ---
-            // Only perform killbrick check if not in noclip
+            let landedThisFrame = false;
             if (!noclipEnabled) {
-                const groundBBox = new THREE.Box3().setFromObject(ground); // Get ground's bounding box
-                if (playerBBox.intersectsBox(groundBBox)) {
-                    if (!isPlayerDead) { // Ensure death logic only runs once
-                        handlePlayerDeath();
+                for (const platform of platforms) {
+                    const platformBBox = new THREE.Box3().setFromObject(platform);
+
+                    if (playerBBoxVerticalCheck.intersectsBox(platformBBox)) {
+                        // Level transition checks (keep these as they are, they return early)
+                        if (currentLevel === 1 && platform === level1EndPlatform) { createLevel(2); return; }
+                        else if (currentLevel === 2 && platform === level2EndPlatform) { createLevel(3); return; }
+                        else if (currentLevel === 3 && platform === level3EndPlatform) { createLevel(4); return; }
+                        else if (currentLevel === 4 && platform === level4EndPlatform) { createLevel(5); return; }
+                        else if (currentLevel === 5 && platform === level5EndPlatform) { createLevel(6); return; }
+                        else if (currentLevel === 6 && platform === level6EndPlatform) { createLevel(7); return; }
+                        else if (currentLevel === 7 && platform === level7EndPlatform) { createLevel(8); return; }
+                        else if (currentLevel === 8 && platform === level8EndPlatform) { createLevel(9); return; }
+                        else if (currentLevel === 9 && platform === level9EndPlatform) { createLevel(10); return; }
+                        else if (currentLevel === 10 && platform === level10EndPlatform) { showGameStatus("Game Complete! You've mastered all 10 levels!"); return; }
+
+                        // Check if player's horizontal projection overlaps the platform
+                        const playerCurrentMinX = currentPlayerPosition.x - playerHalfWidth;
+                        const playerCurrentMaxX = currentPlayerPosition.x + playerHalfWidth;
+                        const playerCurrentMinZ = currentPlayerPosition.z - playerHalfDepth;
+                        const playerCurrentMaxZ = currentPlayerPosition.z + playerHalfDepth;
+
+                        const horizontalOverlapX = Math.max(0, Math.min(playerCurrentMaxX, platformBBox.max.x) - Math.max(playerCurrentMinX, platformBBox.min.x));
+                        const horizontalOverlapZ = Math.max(0, Math.min(playerCurrentMaxZ, platformBBox.max.z) - Math.max(playerCurrentMinZ, platformBBox.min.z));
+
+                        const horizontalOverlapThreshold = 0.1; // Requires some horizontal overlap for vertical resolution
+
+                        if (horizontalOverlapX > horizontalOverlapThreshold && horizontalOverlapZ > horizontalOverlapThreshold) {
+                            // Collision from below (player jumping into bottom of platform)
+                            // Check if player's previous bottom was below platform's top AND current top is above platform's bottom
+                            if (playerVelocity.y > 0 && (currentPlayerPosition.y + playerHalfHeight) <= platformBBox.min.y && (newProposedY + playerHalfHeight) > platformBBox.min.y) {
+                                newProposedY = platformBBox.min.y - playerHalfHeight - 0.001; // Snap below platform
+                                playerVelocity.y = 0;
+                            }
+                            // Collision from above (player falling onto platform)
+                            // Check if player's previous bottom was above platform's top AND current bottom is below platform's top
+                            else if (playerVelocity.y < 0 && (currentPlayerPosition.y - playerHalfHeight) >= platformBBox.max.y && (newProposedY - playerHalfHeight) < platformBBox.max.y) {
+                                newProposedY = platformBBox.max.y + playerHalfHeight + 0.001; // Snap on top of platform
+                                playerVelocity.y = 0;
+                                landedThisFrame = true;
+                            }
+                        }
                     }
-                    return; // Stop update cycle for this frame (player is dead)
                 }
             }
+            player.position.y = newProposedY;
+            onGround = landedThisFrame; // Update onGround based on vertical resolution
 
-            // --- Fall Detection (if falling off platforms into the void, *below* the killbrick ground itself) ---
-            // This is a backup for when the player falls so far they are below the killbrick too.
-            // Also only applies if not in noclip mode.
-            if (!noclipEnabled && player.position.y < ground.position.y - 10) { // If player falls 10 units below the killbrick
-                if (!isPlayerDead) {
-                    handlePlayerDeath();
-                }
-                    return; // Stop update cycle
-            }
+            // --- Second Pass: Horizontal Movement and Collision Resolution (X-Z axes) ---
+            let newProposedX = currentPlayerPosition.x + playerVelocity.x * deltaTime;
+            let newProposedZ = currentPlayerPosition.z + playerVelocity.z * deltaTime;
 
+            // Create temporary BBox for horizontal collision, using the already resolved Y position
+            // The Y components remain fixed from the first pass for this horizontal check.
+            let playerBBoxHorizontalCheck = new THREE.Box3(
+                new THREE.Vector3(newProposedX - playerHalfWidth, player.position.y - playerHalfHeight, newProposedZ - playerHalfDepth),
+                new THREE.Vector3(newProposedX + playerHalfWidth, player.position.y + playerHalfHeight, newProposedZ + playerHalfDepth)
+            );
 
-            // --- Regular Platform Collision Detection and Resolution ---
-            // Only apply regular collision if not in noclip mode and not already dead (or handled death)
             if (!noclipEnabled && !isPlayerDead) {
                 for (const platform of platforms) {
                     const platformBBox = new THREE.Box3().setFromObject(platform);
 
-                    // If player is intersecting with the platform
-                    if (playerBBox.intersectsBox(platformBBox)) {
-                        // Level transition checks
-                        if (currentLevel === 1 && platform === level1EndPlatform) {
-                            createLevel(2);
-                            return; // Stop current update cycle, new level initiated
-                        } else if (currentLevel === 2 && platform === level2EndPlatform) {
-                            createLevel(3);
-                            return;
-                        } else if (currentLevel === 3 && platform === level3EndPlatform) {
-                            createLevel(4);
-                            return;
-                        } else if (currentLevel === 4 && platform === level4EndPlatform) {
-                            createLevel(5);
-                            return;
-                        } else if (currentLevel === 5 && platform === level5EndPlatform) {
-                            createLevel(6); // Transition to Level 6
-                            return;
-                        } else if (currentLevel === 6 && platform === level6EndPlatform) {
-                            createLevel(7); // Transition to Level 7
-                            return;
-                        } else if (currentLevel === 7 && platform === level7EndPlatform) {
-                            createLevel(8); // Transition to Level 8
-                            return;
-                        } else if (currentLevel === 8 && platform === level8EndPlatform) {
-                            createLevel(9); // Transition to Level 9
-                            return;
-                        } else if (currentLevel === 9 && platform === level9EndPlatform) {
-                            createLevel(10); // Transition to Level 10
-                            return;
-                        } else if (currentLevel === 10 && platform === level10EndPlatform) {
-                            showGameStatus("Game Complete! You've mastered all 10 levels!"); // Game completed
-                            return;
-                        }
+                    // Crucial: Check if player's *vertical range* overlaps with platform's vertical range at current Y position.
+                    // AND ensure the proposed horizontal movement actually causes an intersection.
+                    if (player.position.y + playerHalfHeight > platformBBox.min.y &&
+                        player.position.y - playerHalfHeight < platformBBox.max.y &&
+                        playerBBoxHorizontalCheck.intersectsBox(platformBBox)) {
 
+                        // Calculate how much overlap there is on X and Z
+                        const overlapX = Math.min(playerBBoxHorizontalCheck.max.x, platformBBox.max.x) - Math.max(playerBBoxHorizontalCheck.min.x, platformBBox.min.x);
+                        const overlapZ = Math.min(playerBBoxHorizontalCheck.max.z, platformBBox.max.z) - Math.max(playerBBoxHorizontalCheck.min.z, platformBBox.min.z);
 
-                        // Determine overlap on each axis
-                        const overlapX = Math.max(0, Math.min(playerMax.x, platformBBox.max.x) - Math.max(playerMin.x, platformBBox.min.x));
-                        const overlapY = Math.max(0, Math.min(playerMax.y, platformBBox.max.y) - Math.max(playerMin.y, platformBBox.min.y));
-                        const overlapZ = Math.max(0, Math.min(playerMax.z, platformBBox.max.z) - Math.max(playerMin.z, platformBBox.min.z));
-
-                        // Resolve collision on the axis with the smallest overlap
-                        if (overlapX < overlapY && overlapX < overlapZ) {
-                            // Resolve X axis
-                            if (proposedPosition.x < platform.position.x) { // Player is to the left of platform
-                                proposedPosition.x -= overlapX;
-                            } else { // Player is to the right
-                                proposedPosition.x += overlapX;
-                            }
-                        } else if (overlapY < overlapX && overlapY < overlapZ) {
-                            // Resolve Y axis (vertical collision)
-                            // Collision from below (player falling onto platform)
-                            if (playerVelocity.y < 0 && proposedPosition.y - playerHalfHeight <= platformBBox.max.y) { // Strict comparison
-                                proposedPosition.y = platformBBox.max.y + playerHalfHeight;
-                                playerVelocity.y = 0; // Stop vertical movement
-                                newOnGround = true; // Player is now on the ground
-                            } 
-                            // Collision from above (player jumping into bottom of platform)
-                            else if (playerVelocity.y > 0 && proposedPosition.y + playerHalfHeight >= platformBBox.min.y) { // Strict comparison
-                                proposedPosition.y = platformBBox.min.y - playerHalfHeight;
-                                playerVelocity.y = 0; // Stop vertical movement
-                            }
-                        } else {
-                            // Resolve Z axis
-                            if (proposedPosition.z < platform.position.z) { // Player is in front of platform
-                                proposedPosition.z -= overlapZ;
-                            } else { // Player is behind
-                                proposedPosition.z += overlapZ;
+                        // Only resolve if there's actual positive overlap on at least one axis
+                        if (overlapX > 0 || overlapZ > 0) {
+                            // Determine the axis with the *smallest* penetration (i.e., the one we hit first or are least stuck in)
+                            if (overlapX <= overlapZ) { // X-axis has less or equal penetration
+                                // Decide which side to push based on player's position relative to platform center
+                                if (player.position.x < platform.position.x) { // Player is to the left of platform
+                                    newProposedX = platformBBox.min.x - playerHalfWidth - 0.001; // Push left by exact amount + epsilon
+                                } else { // Player is to the right
+                                    newProposedX = platformBBox.max.x + playerHalfWidth + 0.001; // Push right by exact amount + epsilon
+                                }
+                                playerVelocity.x = 0; // Stop horizontal X movement
+                            } else { // Z-axis has less penetration
+                                // Decide which side to push
+                                if (player.position.z < platform.position.z) { // Player is in front of platform
+                                    newProposedZ = platformBBox.min.z - playerHalfDepth - 0.001; // Push backward by exact amount + epsilon
+                                } else { // Player is behind
+                                    newProposedZ = platformBBox.max.z + playerHalfDepth + 0.001; // Push forward by exact amount + epsilon
+                                }
+                                playerVelocity.z = 0; // Stop horizontal Z movement
                             }
                         }
                     }
                 }
             }
 
-            // Update player's position after all collision resolutions
-            player.position.copy(proposedPosition);
-            
-            // --- Additional check to ensure player is on ground if very close to a platform's surface ---
-            // This is crucial for initial spawn and preventing minor slips.
-            if (!noclipEnabled) {
-                let foundGroundNearBy = false;
-                for (const platform of platforms) {
-                    const platformBBox = new THREE.Box3().setFromObject(platform);
-                    const playerBottomY = player.position.y - playerHalfHeight;
-                    const platformTopY = platformBBox.max.y;
+            player.position.x = newProposedX;
+            player.position.z = newProposedZ;
 
-                    // Check if player's feet are within a small vertical tolerance of a platform's top
-                    // AND there's horizontal overlap.
-                    if (Math.abs(playerBottomY - platformTopY) < 0.1 && // Within a small tolerance vertically
-                        player.position.x + playerHalfWidth > platformBBox.min.x &&
-                        player.position.x - playerHalfWidth < platformBBox.max.x &&
-                        player.position.z + playerHalfDepth > platformBBox.min.z &&
-                        player.position.z - playerHalfDepth < platformBBox.max.z)
-                    {
-                        // If found, snap to ground and reset vertical velocity
-                        player.position.y = platformTopY + playerHalfHeight;
-                        playerVelocity.y = 0;
-                        foundGroundNearBy = true;
-                        break; // Found ground, no need to check other platforms
+            // --- Killbrick Ground Check (re-check after all movement) ---
+            if (!noclipEnabled) {
+                const groundBBox = new THREE.Box3().setFromObject(ground);
+                // Create a temporary BBox of player at its current position to check against killbrick
+                const currentPlayerBBox = new THREE.Box3().setFromObject(player);
+                if (currentPlayerBBox.intersectsBox(groundBBox)) {
+                    if (!isPlayerDead) {
+                        handlePlayerDeath();
                     }
+                    return;
                 }
-                onGround = foundGroundNearBy; // Update onGround status based on this check
-            } else {
-                onGround = false; // In noclip, player is never on ground
+            }
+
+            // --- Fall Detection (if falling off platforms into the void, *below* the killbrick ground itself) ---
+            if (!noclipEnabled && player.position.y < ground.position.y - 10) {
+                if (!isPlayerDead) {
+                    handlePlayerDeath();
+                }
+                return;
             }
 
             // Update camera position
             updateCameraPosition();
 
             // --- Make player face away from camera ---
-            // Get the camera's forward direction
-            _cameraDirection.copy(camera.getWorldDirection(_cameraDirection)); // Reuse the global vector
-            
-            // The player should face the opposite direction of the camera's forward vector.
-            const playerLookDirection = _cameraDirection.negate();
-            
-            // Calculate the angle around the Y-axis to make the player look in this direction.
-            // Math.atan2(x, z) calculates the angle from the positive Z-axis.
-            player.rotation.y = Math.atan2(playerLookDirection.x, playerLookDirection.z);
+            // Get the camera's forward direction (already calculated as _cameraDirection flattened to horizontal)
+            // To make the player face AWAY from the camera, we need the opposite direction.
+            player.rotation.y = Math.atan2(-_cameraDirection.x, -_cameraDirection.z);
         }
 
         // --- Player Death Handling ---
@@ -1063,7 +1086,7 @@
             gameStatusDiv.style.opacity = 1;
             gameStatusDiv.style.transition = 'opacity 0.3s ease-in-out';
             // For level messages, make it last a bit longer
-            if (message.includes("Level") || message.includes("Game Complete") || message.includes("Noclip") || message.includes("Died")) {
+            if (message.includes("Level") || message.includes("Game Complete!") || message.includes("Noclip") || message.includes("Died")) {
                  setTimeout(() => {
                      gameStatusDiv.style.opacity = 0;
                      setTimeout(() => gameStatusDiv.style.display = 'none', 300);
