@@ -844,23 +844,23 @@
             }
             
             // Store proposed next position
-            const proposedPosition = player.position.clone().add(playerVelocity.clone().multiplyScalar(deltaTime));
+            let proposedPosition = player.position.clone().add(playerVelocity.clone().multiplyScalar(deltaTime));
 
             // --- Collision Detection for Player Bounding Box ---
             let newOnGround = false;
             // Create player bounding box at proposed position
-            const playerMin = new THREE.Vector3(
+            let playerMin = new THREE.Vector3(
                 proposedPosition.x - playerHalfWidth,
                 proposedPosition.y - playerHalfHeight,
                 proposedPosition.z - playerHalfDepth
             );
-            const playerMax = new THREE.Vector3(
+            let playerMax = new THREE.Vector3(
                 proposedPosition.x + playerHalfWidth,
                 proposedPosition.y + playerHalfHeight,
                 proposedPosition.z + playerHalfDepth
             );
 
-            const playerBBox = new THREE.Box3(playerMin, playerMax);
+            let playerBBox = new THREE.Box3(playerMin, playerMax);
 
             // --- Killbrick Ground Check ---
             // Only perform killbrick check if not in noclip
@@ -891,74 +891,101 @@
                 for (const platform of platforms) {
                     const platformBBox = new THREE.Box3().setFromObject(platform);
 
-                    // If player is intersecting with the platform
+                    // Re-calculate player BBox for *current* proposed position before collision check
+                    playerMin.set(
+                        proposedPosition.x - playerHalfWidth,
+                        proposedPosition.y - playerHalfHeight,
+                        proposedPosition.z - playerHalfDepth
+                    );
+                    playerMax.set(
+                        proposedPosition.x + playerHalfWidth,
+                        proposedPosition.y + playerHalfHeight,
+                        proposedPosition.z + playerHalfDepth
+                    );
+                    playerBBox.set(playerMin, playerMax);
+
+                    // If player is intersecting with the platform at the proposed position
                     if (playerBBox.intersectsBox(platformBBox)) {
-                        // Level transition checks
-                        if (currentLevel === 1 && platform === level1EndPlatform) {
-                            createLevel(2);
-                            return; // Stop current update cycle, new level initiated
-                        } else if (currentLevel === 2 && platform === level2EndPlatform) {
-                            createLevel(3);
-                            return;
-                        } else if (currentLevel === 3 && platform === level3EndPlatform) {
-                            createLevel(4);
-                            return;
-                        } else if (currentLevel === 4 && platform === level4EndPlatform) {
-                            createLevel(5);
-                            return;
-                        } else if (currentLevel === 5 && platform === level5EndPlatform) {
-                            createLevel(6); // Transition to Level 6
-                            return;
-                        } else if (currentLevel === 6 && platform === level6EndPlatform) {
-                            createLevel(7); // Transition to Level 7
-                            return;
-                        } else if (currentLevel === 7 && platform === level7EndPlatform) {
-                            createLevel(8); // Transition to Level 8
-                            return;
-                        } else if (currentLevel === 8 && platform === level8EndPlatform) {
-                            createLevel(9); // Transition to Level 9
-                            return;
-                        } else if (currentLevel === 9 && platform === level9EndPlatform) {
-                            createLevel(10); // Transition to Level 10
-                            return;
-                        } else if (currentLevel === 10 && platform === level10EndPlatform) {
-                            showGameStatus("Game Complete! You've mastered all 10 levels!"); // Game completed
-                            return;
+                        // Level transition checks (keep these as they are, they return early)
+                        if (currentLevel === 1 && platform === level1EndPlatform) { createLevel(2); return; }
+                        else if (currentLevel === 2 && platform === level2EndPlatform) { createLevel(3); return; }
+                        else if (currentLevel === 3 && platform === level3EndPlatform) { createLevel(4); return; }
+                        else if (currentLevel === 4 && platform === level4EndPlatform) { createLevel(5); return; }
+                        else if (currentLevel === 5 && platform === level5EndPlatform) { createLevel(6); return; }
+                        else if (currentLevel === 6 && platform === level6EndPlatform) { createLevel(7); return; }
+                        else if (currentLevel === 7 && platform === level7EndPlatform) { createLevel(8); return; }
+                        else if (currentLevel === 8 && platform === level8EndPlatform) { createLevel(9); return; }
+                        else if (currentLevel === 9 && platform === level9EndPlatform) { createLevel(10); return; }
+                        else if (currentLevel === 10 && platform === level10EndPlatform) { showGameStatus("Game Complete! You've mastered all 10 levels!"); return; }
+
+                        // --- VERTICAL COLLISION RESOLUTION ---
+                        // Only resolve vertical if there's vertical overlap AND player is within horizontal bounds
+                        const horizontalOverlapX = Math.max(0, Math.min(playerMax.x, platformBBox.max.x) - Math.max(playerMin.x, platformBBox.min.x));
+                        const horizontalOverlapZ = Math.max(0, Math.min(playerMax.z, platformBBox.max.z) - Math.max(playerMin.z, platformBBox.min.z));
+
+                        // Only apply vertical resolution if there's significant horizontal overlap
+                        if (horizontalOverlapX > 0 && horizontalOverlapZ > 0) { 
+                            // Collision from below (player jumping into bottom of platform)
+                            if (playerVelocity.y > 0 && playerMax.y > platformBBox.min.y && playerMin.y < platformBBox.min.y) {
+                                proposedPosition.y = platformBBox.min.y - playerHalfHeight; // Snap player's top to platform's bottom
+                                playerVelocity.y = 0; // Stop upward movement
+                            }
+                            // Collision from above (player falling onto platform)
+                            else if (playerVelocity.y < 0 && playerMin.y < platformBBox.max.y && playerMax.y > platformBBox.max.y) {
+                                proposedPosition.y = platformBBox.max.y + playerHalfHeight; // Snap player's bottom to platform's top
+                                playerVelocity.y = 0; // Stop vertical movement
+                                newOnGround = true;
+                            }
                         }
 
+                        // --- HORIZONTAL COLLISION RESOLUTION ---
+                        // If player is still intersecting after potential vertical resolution (meaning it's a side collision)
+                        // Re-calculate current player BBox as its Y position might have changed
+                        playerMin.set(
+                            proposedPosition.x - playerHalfWidth,
+                            proposedPosition.y - playerHalfHeight,
+                            proposedPosition.z - playerHalfDepth
+                        );
+                        playerMax.set(
+                            proposedPosition.x + playerHalfWidth,
+                            proposedPosition.y + playerHalfHeight,
+                            proposedPosition.z + playerHalfDepth
+                        );
+                        playerBBox.set(playerMin, playerMax);
 
-                        // Determine overlap on each axis
-                        const overlapX = Math.max(0, Math.min(playerMax.x, platformBBox.max.x) - Math.max(playerMin.x, platformBBox.min.x));
-                        const overlapY = Math.max(0, Math.min(playerMax.y, platformBBox.max.y) - Math.max(playerMin.y, platformBBox.min.y));
-                        const overlapZ = Math.max(0, Math.min(playerMax.z, platformBBox.max.z) - Math.max(playerMin.z, platformBBox.min.z));
+                        if (playerBBox.intersectsBox(platformBBox)) {
+                            const overlapX = Math.max(0, Math.min(playerMax.x, platformBBox.max.x) - Math.max(playerMin.x, platformBBox.min.x));
+                            const overlapZ = Math.max(0, Math.min(playerMax.z, platformBBox.max.z) - Math.max(playerMin.z, platformBBox.min.z));
 
-                        // Resolve collision on the axis with the smallest overlap
-                        if (overlapX < overlapY && overlapX < overlapZ) {
-                            // Resolve X axis
-                            if (proposedPosition.x < platform.position.x) { // Player is to the left of platform
-                                proposedPosition.x -= overlapX;
-                            } else { // Player is to the right
-                                proposedPosition.x += overlapX;
-                            }
-                        } else if (overlapY < overlapX && overlapY < overlapZ) {
-                            // Resolve Y axis (vertical collision)
-                            // Collision from below (player falling onto platform)
-                            if (playerVelocity.y < 0 && proposedPosition.y - playerHalfHeight <= platformBBox.max.y) { // Strict comparison
-                                proposedPosition.y = platformBBox.max.y + playerHalfHeight;
-                                playerVelocity.y = 0; // Stop vertical movement
-                                newOnGround = true; // Player is now on the ground
-                            } 
-                            // Collision from above (player jumping into bottom of platform)
-                            else if (playerVelocity.y > 0 && proposedPosition.y + playerHalfHeight >= platformBBox.min.y) { // Strict comparison
-                                proposedPosition.y = platformBBox.min.y - playerHalfHeight - 0.01; // Subtract small epsilon
-                                playerVelocity.y = 0; // Stop vertical movement
-                            }
-                        } else {
-                            // Resolve Z axis
-                            if (proposedPosition.z < platform.position.z) { // Player is in front of platform
-                                proposedPosition.z -= overlapZ;
-                            } else { // Player is behind
-                                proposedPosition.z += overlapZ;
+                            // Only resolve on the axis with smallest overlap, if both are greater than 0
+                            if (overlapX > 0 && overlapZ > 0) {
+                                if (overlapX < overlapZ) {
+                                    // Resolve X axis
+                                    if (proposedPosition.x < platform.position.x) { // Player is to the left of platform
+                                        proposedPosition.x -= overlapX;
+                                    } else { // Player is to the right
+                                        proposedPosition.x += overlapX;
+                                    }
+                                } else {
+                                    // Resolve Z axis
+                                    if (proposedPosition.z < platform.position.z) { // Player is in front of platform
+                                        proposedPosition.z -= overlapZ;
+                                    } else { // Player is behind
+                                        proposedPosition.z += overlapZ;
+                                    }
+                                }
+                            } else if (overlapX > 0) { // Only X overlap
+                                if (proposedPosition.x < platform.position.x) {
+                                    proposedPosition.x -= overlapX;
+                                } else {
+                                    proposedPosition.x += overlapX;
+                                }
+                            } else if (overlapZ > 0) { // Only Z overlap
+                                if (proposedPosition.z < platform.position.z) {
+                                    proposedPosition.z -= overlapZ;
+                                } else {
+                                    proposedPosition.z += overlapZ;
+                                }
                             }
                         }
                     }
